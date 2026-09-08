@@ -41,7 +41,12 @@ Two points worth knowing before hacking on it:
   polling: two cadences on one device (live power every few seconds, daily
   statistics every few minutes). Bad credentials stop the timers on purpose;
   any other failure keeps retrying and flags the integration as disconnected
-  after three misses.
+  after three misses. Gladys polling is a trap worth knowing: the core only
+  polls a device published with **both** `should_poll: true` and a
+  `poll_frequency` from its fixed list (1, 2, 10, 15, 30, 60 s), the Discovery
+  screen posts the payload as-is and nothing infers one flag from the other.
+  The devices here say `should_poll: false` explicitly, and `onPoll` still
+  answers with an immediate reading if someone turns polling on by hand.
 
 ## Development
 

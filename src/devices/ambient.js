@@ -58,6 +58,9 @@ export const ambient = {
     return {
       name: 'ecojoko (ambiance)',
       external_id: ids.device,
+      // Same choice as the meter: states are pushed by the scheduler, see
+      // src/devices/power-meter.js for why Gladys polling stays off.
+      should_poll: false,
       features: [
         sensor(
           ids,

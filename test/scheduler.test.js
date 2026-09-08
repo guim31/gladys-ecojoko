@@ -60,7 +60,7 @@ test('the scheduler discovers, publishes devices and first states, then ticks', 
   const { engine, fake } = makeEngine(config, { realtime: 850 });
   const gladys = createFakeGladys();
 
-  const stop = await startScheduler({ gladys, config, engine });
+  const { stop, poll } = await startScheduler({ gladys, config, engine });
   assert.equal(gladys.discovered.length, 1);
   assert.equal(gladys.discovered[0].length, 2, 'meter + ambient');
 
@@ -82,10 +82,23 @@ test('the scheduler discovers, publishes devices and first states, then ticks', 
   }
   assert.equal(realtimeCalls(), before + 1, 'one live reading per poll_frequency');
 
+  // onPoll fallback: a poll on the meter is an immediate live reading, a poll
+  // on the ambient device a statistics refresh, an unknown device is ignored.
+  await poll({ external_id: 'ecojoko-meter:4242-11' });
+  assert.equal(realtimeCalls(), before + 2, 'poll(meter) reads the live power');
+  const statsCalls = () => fake.state.calls.filter((c) => c.path.includes('/powerstat/')).length;
+  const statsBefore = statsCalls();
+  await poll({ external_id: 'ecojoko-ambient:4242-12' });
+  assert.equal(statsCalls(), statsBefore + 1, 'poll(ambient) refreshes the statistics');
+  await poll({ external_id: 'ecojoko-meter:unknown' });
+  assert.equal(realtimeCalls(), before + 2);
+
   stop();
   t.mock.timers.tick(10 * 60 * 1000);
   await Promise.resolve();
-  assert.equal(realtimeCalls(), before + 1, 'nothing after stop');
+  assert.equal(realtimeCalls(), before + 2, 'nothing after stop');
+  await poll({ external_id: 'ecojoko-meter:4242-11' });
+  assert.equal(realtimeCalls(), before + 2, 'poll is a no-op once stopped');
 });
 
 test('bad credentials stop the scheduler and flag the integration', async () => {
@@ -116,7 +129,7 @@ test('a cloud outage after start flags disconnected after 3 failures, then recov
       }),
   });
   const gladys = createFakeGladys();
-  const stop = await startScheduler({ gladys, config, engine });
+  const { stop } = await startScheduler({ gladys, config, engine });
   const drain = async () => {
     for (let i = 0; i < 20; i += 1) {
       await Promise.resolve();

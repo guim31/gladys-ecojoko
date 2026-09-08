@@ -140,8 +140,15 @@ export const powerMeter = {
     return {
       name: 'ecojoko',
       external_id: ids.device,
-      // No poll_frequency: the schedule lives in the container (src/scheduler.js),
-      // one timer for the live power, another for the daily statistics.
+      // Gladys polling is deliberately OFF. The core only polls a device that
+      // carries BOTH `should_poll: true` and a `poll_frequency` from its fixed
+      // list (1, 2, 10, 15, 30 or 60 s); the Discovery screen posts this payload
+      // as-is, nothing in the core infers one flag from the other. Our two
+      // cadences (live power, daily statistics) are user-configurable and do
+      // not fit that list, so the container pushes states itself
+      // (src/scheduler.js). A poll request still gets an answer (onPoll in
+      // index.js) should someone enable polling from the device page.
+      should_poll: false,
       features,
     };
   },

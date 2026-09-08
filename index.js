@@ -29,15 +29,15 @@ const gladys = new GladysIntegration();
 
 let config = normalizeConfig();
 let engine = null;
-let stopScheduler = null;
+let scheduler = null; // { stop, poll } returned by startScheduler
 // Serializes start/stop so a config update racing the connection handler
 // never leaves two schedulers running.
 let lifecycle = Promise.resolve();
 
 function stopEverything() {
-  if (stopScheduler) {
-    stopScheduler();
-    stopScheduler = null;
+  if (scheduler) {
+    scheduler.stop();
+    scheduler = null;
   }
   engine = null;
 }
@@ -54,7 +54,7 @@ async function restart() {
   }
   engine = createEngine({ config, dataDir: DATA_DIR });
   try {
-    stopScheduler = await startScheduler({ gladys, config, engine });
+    scheduler = await startScheduler({ gladys, config, engine });
     await gladys.setConnectionStatus(true);
   } catch (err) {
     logger.error('Start failed', err);
@@ -84,6 +84,17 @@ gladys.onScanRequest(async () => {
   }
   logger.info('onScanRequest -> publishing discovered devices');
   await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, snapshot, config));
+});
+
+// --- Poll: fallback only ------------------------------------------------------
+// Devices are published with `should_poll: false` (see src/devices/), so the
+// core scheduler never calls this. If a user enables polling from the device
+// page anyway, answer with an immediate reading rather than "not implemented".
+gladys.onPoll(async (device) => {
+  if (!scheduler) {
+    throw new Error('ecojoko not connected yet');
+  }
+  await scheduler.poll(device);
 });
 
 // --- Command: every feature is read-only -------------------------------------

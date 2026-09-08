@@ -39,7 +39,9 @@ export const MESSAGES = {
 
 /**
  * Discover the account, publish the devices, start both timers.
- * @returns {Promise<() => void>} stop function
+ * @returns {Promise<{ stop: () => void, poll: (device: object) => Promise<void> }>}
+ *   `stop` clears the timers; `poll` runs the reading matching one device
+ *   right away (the `onPoll` fallback, if Gladys polling is ever enabled).
  */
 export async function startScheduler({ gladys, config, engine }) {
   const snapshot = await engine.discover();
@@ -131,6 +133,29 @@ export async function startScheduler({ gladys, config, engine }) {
     }
   }
 
+  /**
+   * Gladys asked to poll one of our devices. Not expected (the devices are
+   * published with `should_poll: false`), but if a user turns polling on from
+   * the device page, answer with the matching reading instead of "not
+   * implemented": live power for the meter, statistics for the ambient device.
+   */
+  async function poll(device) {
+    if (stopped) {
+      return;
+    }
+    const externalId = device?.external_id;
+    if (externalId === powerMeter.deviceExternalId(gladys, snapshot)) {
+      await realtimeTick();
+    } else if (
+      ambient.isAvailable(snapshot, config) &&
+      externalId === ambient.deviceExternalId(gladys, snapshot)
+    ) {
+      await statsTick();
+    } else {
+      logger.warn(`Poll requested for an unknown device: ${externalId}`);
+    }
+  }
+
   // First readings right away (a config save must show values without waiting
   // a full interval), then on schedule.
   await statsTick();
@@ -142,5 +167,5 @@ export async function startScheduler({ gladys, config, engine }) {
       `Scheduled: live power every ${config.poll_frequency} s, statistics every ${config.stats_frequency} s`,
     );
   }
-  return stop;
+  return { stop, poll };
 }

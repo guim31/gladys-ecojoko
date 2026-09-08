@@ -34,6 +34,9 @@ test('discovery publishes the meter and, when present, the ambient device', () =
   assert.equal(devices[0].external_id, 'ecojoko-meter:4242-11');
   assert.equal(devices[1].external_id, 'ecojoko-ambient:4242-12');
   for (const device of devices) {
+    // Gladys polls only devices carrying should_poll: true AND a poll_frequency
+    // from its fixed list; we push states ourselves and say so explicitly.
+    assert.equal(device.should_poll, false, 'Gladys polling explicitly off');
     assert.equal(device.poll_frequency, undefined, 'schedule lives in the container');
     for (const feature of device.features) {
       assert.equal(feature.read_only, true);
