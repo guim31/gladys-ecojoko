@@ -1,33 +1,35 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
+import { DEFAULT_CONFIG, LIMITS, hasCredentials, normalizeConfig } from '../src/config.js';
 
-test('normalizeConfig returns the defaults when called with no argument', () => {
+test('normalizeConfig returns the defaults for an empty config', () => {
   assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig({}), DEFAULT_CONFIG);
 });
 
-test('normalizeConfig keeps user values over the defaults', () => {
-  const config = normalizeConfig({ latitude: 45.5, longitude: -73.6, unit: 'fahrenheit' });
-  assert.equal(config.latitude, 45.5);
-  assert.equal(config.longitude, -73.6);
-  assert.equal(config.unit, 'fahrenheit');
+test('numbers arriving as strings are parsed and clamped', () => {
+  const config = normalizeConfig({ poll_frequency: '10', stats_frequency: '99999' });
+  assert.equal(config.poll_frequency, 10);
+  assert.equal(config.stats_frequency, LIMITS.stats_frequency.max);
+  assert.equal(normalizeConfig({ poll_frequency: 1 }).poll_frequency, LIMITS.poll_frequency.min);
+  assert.equal(
+    normalizeConfig({ poll_frequency: 'abc' }).poll_frequency,
+    DEFAULT_CONFIG.poll_frequency,
+  );
 });
 
-test('normalizeConfig coerces numeric strings coming from a form', () => {
-  const config = normalizeConfig({ latitude: '48.8', longitude: '2.3', poll_frequency: '600' });
-  assert.equal(config.latitude, 48.8);
-  assert.equal(config.longitude, 2.3);
-  assert.equal(config.poll_frequency, 600);
-  assert.equal(typeof config.poll_frequency, 'number');
+test('booleans accept the string form sent by some forms', () => {
+  assert.equal(normalizeConfig({ environment: 'false' }).environment, false);
+  assert.equal(normalizeConfig({ environment: false }).environment, false);
+  assert.equal(normalizeConfig({ environment: 'true' }).environment, true);
+  assert.equal(normalizeConfig({ sub_consumption: null }).sub_consumption, true);
 });
 
-test('normalizeConfig falls back to the default for a missing numeric field', () => {
-  const config = normalizeConfig({ unit: 'celsius' });
-  assert.equal(config.poll_frequency, DEFAULT_CONFIG.poll_frequency);
-});
-
-test('GLADYS_PREFER_LOCAL defaults to true and only an explicit false disables it', () => {
-  assert.equal(normalizeConfig().GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: true }).GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: false }).GLADYS_PREFER_LOCAL, false);
+test('credentials are trimmed (email) but never altered (password)', () => {
+  const config = normalizeConfig({ email: '  me@example.com ', password: ' p a s s ' });
+  assert.equal(config.email, 'me@example.com');
+  assert.equal(config.password, ' p a s s ');
+  assert.equal(hasCredentials(config), true);
+  assert.equal(hasCredentials(normalizeConfig({ email: 'me@example.com' })), false);
+  assert.equal(hasCredentials(normalizeConfig({ password: 'x' })), false);
 });

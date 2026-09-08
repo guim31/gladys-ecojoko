@@ -1,185 +1,131 @@
 // -----------------------------------------------------------------------------
-// Entry point of the Gladys external integration.
+// Entry point of the Gladys ecojoko external integration.
 //
-// Role of this file: wire the SDK to the device catalog (src/devices/). It holds
-// NO hardware logic: all the control "work" lives in the device modules. This
-// file only:
-//   1. instantiates the SDK (connection, auth, reconnection: handled for you);
-//   2. registers the event handlers BEFORE connect();
-//   3. connects and publishes the discovered devices.
+// Role of this file: wire the SDK to the engine and the scheduler. It holds no
+// business logic:
+//   - src/ecojoko.js      the reverse-engineered cloud client
+//   - src/index-store.js  the synthesized cumulative kWh index (persisted)
+//   - src/engine.js       discovery + readings
+//   - src/scheduler.js    the two timers, state publication, failure policy
+//   - src/devices/        the Gladys device payloads
+//   - src/actions.js      the Configuration-screen buttons
 //
 // Environment variables provided by the Gladys supervisor to the container:
-//   - GLADYS_HOST_API_URL         (host API URL)
-//   - GLADYS_INTEGRATION_TOKEN    (integration-scoped JWT)
-//   - GLADYS_INTEGRATION_SELECTOR (integration identifier)
-// The SDK reads them automatically: `new GladysIntegration()` is enough.
+//   - GLADYS_HOST_API_URL, GLADYS_INTEGRATION_TOKEN, GLADYS_INTEGRATION_SELECTOR
+//     (read by the SDK: `new GladysIntegration()` is enough)
+//   - DATA_DIR (optional, defaults to /data, the sandbox's only writable path)
 // -----------------------------------------------------------------------------
 
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
-import { normalizeConfig } from './src/config.js';
-import {
-  DEVICE_BLUEPRINTS,
-  buildDiscoveredDevices,
-  buildTransportEntries,
-  findBlueprintByDevice,
-  identifyDevice,
-} from './src/devices/index.js';
+import { hasCredentials, normalizeConfig } from './src/config.js';
+import { createEngine } from './src/engine.js';
+import { startScheduler, MESSAGES } from './src/scheduler.js';
+import { buildDiscoveredDevices } from './src/devices/index.js';
+import { ACTIONS } from './src/actions.js';
+
+const DATA_DIR = process.env.DATA_DIR || '/data';
 
 const gladys = new GladysIntegration();
 
-// Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
+let engine = null;
+let stopScheduler = null;
+// Serializes start/stop so a config update racing the connection handler
+// never leaves two schedulers running.
+let lifecycle = Promise.resolve();
 
-// Cleanup functions for the "push" subscriptions (e.g. the motion sensor).
-let pushCleanups = [];
+function stopEverything() {
+  if (stopScheduler) {
+    stopScheduler();
+    stopScheduler = null;
+  }
+  engine = null;
+}
+
+/**
+ * (Re)start the integration with the current configuration.
+ */
+async function restart() {
+  stopEverything();
+  if (!hasCredentials(config)) {
+    logger.info('No credentials configured yet');
+    await gladys.setConnectionStatus(false, MESSAGES.missingCredentials);
+    return;
+  }
+  engine = createEngine({ config, dataDir: DATA_DIR });
+  try {
+    stopScheduler = await startScheduler({ gladys, config, engine });
+    await gladys.setConnectionStatus(true);
+  } catch (err) {
+    logger.error('Start failed', err);
+    stopEverything();
+    const message =
+      err.name === 'EcojokoAuthError' ? MESSAGES.badCredentials : MESSAGES.unreachable;
+    await gladys.setConnectionStatus(false, message).catch(() => {});
+    if (err.name !== 'EcojokoAuthError') {
+      // Transient: try again in a minute rather than staying idle until a
+      // config change. Bad credentials wait for the user instead.
+      setTimeout(() => queue(restart), 60000).unref();
+    }
+  }
+}
+
+function queue(task) {
+  lifecycle = lifecycle.then(task).catch((err) => logger.error('Lifecycle task failed', err));
+  return lifecycle;
+}
 
 // --- Discovery: Gladys asks for the list of devices --------------------------
 gladys.onScanRequest(async () => {
-  logger.info('onScanRequest -> publishing discovered devices');
-  await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-});
-
-// --- Command: the user acts on a controllable feature ------------------------
-gladys.onSetValue(async (device, feature, value) => {
-  logger.info(`onSetValue <- ${feature.external_id} = ${value}`);
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onSetValue !== 'function') {
-    // Throw: the SDK sends a success:false acknowledgement to Gladys.
-    throw new Error(`No command handler for ${device.external_id}`);
-  }
-  await blueprint.onSetValue(gladys, { device, feature, value, config });
-});
-
-// --- Camera: Gladys needs a FRESH image of a camera device -------------------
-// Triggered by the dashboard live view or a chat intent. The resolved
-// `image/jpg;base64,...` string (≤ 150 KB) is acked back to Gladys; the ack is
-// awaited under 15 s (not the usual 5 s), so a real capture fits.
-gladys.onGetImage(async (device) => {
-  logger.info(`onGetImage <- ${device.external_id}`);
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onGetImage !== 'function') {
-    throw new Error(`No camera handler for ${device.external_id}`);
-  }
-  return blueprint.onGetImage(gladys, { device, config });
-});
-
-// --- Polling: Gladys asks to refresh a device --------------------------------
-gladys.onPoll(async (device) => {
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onPoll !== 'function') {
-    logger.debug(`onPoll ignored (no polling) for ${device.external_id}`);
+  const snapshot = engine?.getSnapshot();
+  if (!snapshot) {
+    logger.info('onScanRequest before discovery: nothing to publish yet');
     return;
   }
-  await blueprint.onPoll(gladys, config);
+  logger.info('onScanRequest -> publishing discovered devices');
+  await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, snapshot, config));
 });
 
-// --- Manifest actions: buttons in the Configuration screen -------------------
-// Each action declared in the `actions` field of the manifest is registered
-// per key; the message resolved by the handler is displayed under the button
-// (the ack is awaited under the action's `timeout_seconds`, not the usual 5 s).
-for (const blueprint of DEVICE_BLUEPRINTS) {
-  for (const [actionKey, handler] of Object.entries(blueprint.actions ?? {})) {
-    gladys.onAction(actionKey, (fields) => handler(gladys, { fields, config }));
-  }
+// --- Command: every feature is read-only -------------------------------------
+gladys.onSetValue(async (device, feature) => {
+  throw new Error(`ecojoko sensors are read-only (${feature.external_id})`);
+});
+
+// --- Manifest actions --------------------------------------------------------
+for (const [key, handler] of Object.entries(ACTIONS)) {
+  gladys.onAction(key, (fields) => handler({ fields, config, createEngine, dataDir: DATA_DIR }));
 }
-
-// The `identify` action targets ONE device chosen by the user, so it is not
-// owned by a single blueprint. Its manifest field declares
-// `"source": "devices"` (SDK v0.7+): instead of static `options`, the
-// Configuration screen fills the select with the integration's own created
-// devices, and the handler receives the chosen external_id as a field value.
-gladys.onAction('identify', (fields) => {
-  logger.info(`Action identify <- ${fields.device}`);
-  return identifyDevice(gladys, fields.device, config);
-});
 
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
-  logger.info('onConfigUpdated -> new configuration received');
+  logger.info('onConfigUpdated -> restarting with the new configuration');
   config = normalizeConfig(newConfig);
-  // Re-publish the devices: some properties (unit, frequency) depend on it.
-  // publishDiscoveredDevices is idempotent (upsert by external_id).
-  await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-  // The reserved GLADYS_PREFER_LOCAL key arrives here like any other key:
-  // re-route the dual-channel devices, then reflect the ACTUAL outcome.
-  await publishDeviceTransports();
+  await queue(restart);
 });
 
 // --- Connection lifecycle ----------------------------------------------------
-// The SDK itself logs the WebSocket lifecycle (connections, disconnections,
-// reconnection attempts) under the `gladys-sdk` name: no need to log it again
-// here, these handlers only run the integration's own (re)initialization.
 gladys.on('connected', async () => {
   try {
-    // 1) Fetch the config filled in by the user.
     config = normalizeConfig(await gladys.getConfig());
-
-    // 2) (Re)publish all devices as soon as we are connected.
-    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-
-    // 3) Publish the per-device transport badge (cloud/local, dual-channel
-    // devices only). Lightweight channel: on a live switch, call it again
-    // without re-publishing the devices.
-    await publishDeviceTransports();
-
-    // 4) Start the real-time subscriptions ("push" sensors, camera snapshots).
-    stopPushSubscriptions();
-    pushCleanups = DEVICE_BLUEPRINTS.filter((bp) => typeof bp.startPush === 'function').map((bp) =>
-      bp.startPush(gladys, config),
-    );
-
-    // 5) Report the application-level status, shown in the Configuration
-    // screen. Distinct from the container state machine: an integration can
-    // be RUNNING and still disconnected from its third-party service.
-    await gladys.setConnectionStatus(true);
   } catch (err) {
-    logger.error('Post-connection initialization failed', err);
-    await gladys
-      .setConnectionStatus(false, {
-        en: 'Initialization failed, check the integration logs.',
-        fr: "L'initialisation a échoué, consultez les logs de l'intégration.",
-      })
-      .catch(() => {});
+    logger.error('Cannot fetch the configuration', err);
+    return;
   }
+  await queue(restart);
 });
 
 gladys.on('disconnected', () => {
-  stopPushSubscriptions();
+  queue(async () => stopEverything());
 });
 
-// Publish the effective transport of every dual-channel device
-// ('local' | 'cloud' | 'unreachable'), rendered as a badge in the Gladys UI.
-// An entry can also flag a degraded state (`{ degraded: true, message }`,
-// SDK v0.7+): the badge keeps its transport color plus an orange dot, and the
-// tooltip shows the reason — see src/devices/plug.js.
-async function publishDeviceTransports() {
-  const entries = buildTransportEntries(gladys, config);
-  if (entries.length > 0) {
-    await gladys.publishTransports(entries);
-  }
-}
-
-function stopPushSubscriptions() {
-  for (const cleanup of pushCleanups) {
-    try {
-      cleanup?.();
-    } catch (err) {
-      logger.error('Push subscription cleanup failed', err);
-    }
-  }
-  pushCleanups = [];
-}
-
 // --- Graceful shutdown -------------------------------------------------------
-// The SDK stops the push subscriptions, disconnects cleanly and exits with
-// code 0 when the supervisor stops the container (SIGTERM/SIGINT).
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
-  stopPushSubscriptions();
+  stopEverything();
 });
 
 // --- Startup -----------------------------------------------------------------
-logger.info('Starting the template integration...');
+logger.info('Starting the ecojoko integration...');
 gladys.connect().catch((err) => {
   logger.error('Initial connection failed', err);
   process.exit(1);

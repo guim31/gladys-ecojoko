@@ -16,12 +16,14 @@ export function createFakeGladys() {
   const cameraImages = [];
   const transports = [];
   const connectionStatuses = [];
+  const discovered = [];
 
   return {
     published,
     cameraImages,
     transports,
     connectionStatuses,
+    discovered,
 
     externalIds(type, platformId) {
       const device = `${type}:${platformId}`;
@@ -47,6 +49,10 @@ export function createFakeGladys() {
 
     async publishTransports(entries) {
       transports.push(...entries);
+    },
+
+    async publishDiscoveredDevices(devices) {
+      discovered.push(devices);
     },
 
     async setConnectionStatus(connected, message) {

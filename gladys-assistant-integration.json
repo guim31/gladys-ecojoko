@@ -1,102 +1,127 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "ecojoko",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Live power, daily consumption and ambient sensors from your ecojoko energy assistant, with a cumulative index for the Gladys energy dashboard.",
+    "fr": "Puissance instantanée, consommation du jour et capteurs d'ambiance de votre assistant ecojoko, avec un index cumulé pour le tableau de bord énergie de Gladys."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.0.0",
   "gladys_version": ">=4.86.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-ecojoko/main/cover.png",
+  "categories": ["energy"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "How it works",
+        "fr": "Fonctionnement"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Your ecojoko sensor sends its readings to the ecojoko cloud; this integration reads them back with your ecojoko account (the one of the mobile app). ecojoko publishes no official API: this is the interface its own web app uses, it may change without notice. Nothing is ever written to your account.",
+        "fr": "Votre capteur ecojoko envoie ses mesures au cloud ecojoko ; cette intégration les relit avec votre compte ecojoko (celui de l'application mobile). ecojoko ne publie pas d'API officielle : c'est l'interface de sa propre application web qui est utilisée, elle peut changer sans préavis. Rien n'est jamais écrit sur votre compte."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://service.ecojoko.com/",
+          "label": {
+            "en": "My ecojoko account",
+            "fr": "Mon compte ecojoko"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "email",
+      "type": "string",
+      "label": {
+        "en": "ecojoko email",
+        "fr": "E-mail ecojoko"
       },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "placeholder": { "en": "you@example.com", "fr": "vous@exemple.fr" }
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "password",
+      "type": "secret",
+      "label": {
+        "en": "ecojoko password",
+        "fr": "Mot de passe ecojoko"
       },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
+      "required": true
     },
     {
       "key": "poll_frequency",
       "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": {
+        "en": "Live power refresh (s)",
+        "fr": "Rafraîchissement de la puissance (s)"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds.",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes."
+        "en": "Seconds between two readings of the instantaneous power. Keep it reasonable: every reading is a request to the ecojoko cloud.",
+        "fr": "Secondes entre deux lectures de la puissance instantanée. Restez raisonnable : chaque lecture est une requête vers le cloud ecojoko."
+      },
+      "required": false,
+      "default": 30,
+      "min": 5,
+      "max": 300
+    },
+    {
+      "key": "stats_frequency",
+      "type": "number",
+      "label": {
+        "en": "Daily statistics refresh (s)",
+        "fr": "Rafraîchissement des statistiques du jour (s)"
+      },
+      "description": {
+        "en": "Seconds between two refreshes of today's consumption, the cumulative index and the ambient sensors.",
+        "fr": "Secondes entre deux mises à jour de la consommation du jour, de l'index cumulé et des capteurs d'ambiance."
       },
       "required": false,
       "default": 300,
-      "min": 30,
+      "min": 60,
       "max": 3600
+    },
+    {
+      "key": "sub_consumption",
+      "type": "boolean",
+      "label": {
+        "en": "One sensor per tariff period",
+        "fr": "Un capteur par période tarifaire"
+      },
+      "description": {
+        "en": "Adds today's kWh per period reported by ecojoko (off-peak/peak hours, Tempo colours) when your tariff declares them.",
+        "fr": "Ajoute les kWh du jour par période remontée par ecojoko (heures creuses/pleines, couleurs Tempo) quand votre tarif en déclare."
+      },
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "environment",
+      "type": "boolean",
+      "label": {
+        "en": "Ambient temperature and humidity",
+        "fr": "Température et humidité ambiantes"
+      },
+      "description": {
+        "en": "Publishes the indoor/outdoor temperature and humidity of the ecojoko display as a second device.",
+        "fr": "Publie la température et l'humidité intérieures/extérieures de l'afficheur ecojoko comme second appareil."
+      },
+      "required": false,
+      "default": true
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion"
+      },
+      "timeout_seconds": 60
     }
   ]
 }
