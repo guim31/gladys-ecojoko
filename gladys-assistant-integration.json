@@ -3,8 +3,8 @@
   "type": "device",
   "name": "ecojoko",
   "description": {
-    "en": "Live power, daily consumption and ambient sensors from your ecojoko energy assistant, with a cumulative index for the Gladys energy dashboard.",
-    "fr": "Puissance instantanée, consommation du jour et capteurs d'ambiance de votre assistant ecojoko, avec un index cumulé pour le tableau de bord énergie de Gladys."
+    "en": "Live power, daily consumption and ambient sensors from your ecojoko energy assistant.",
+    "fr": "Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko."
   },
   "version": "1.0.1",
   "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.0.1",
