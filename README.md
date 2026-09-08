@@ -68,4 +68,6 @@ multi-arch image (amd64 + arm64) to
 ## Legal
 
 Independent community project, not affiliated with or endorsed by ecojoko.
+The ecojoko name and monkey logo belong to ecojoko and appear on the cover
+only to identify the product this integration connects to.
 Code under the [Apache-2.0](LICENSE) license.
