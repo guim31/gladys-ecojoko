@@ -2,7 +2,9 @@
 // Device type: POWER METER (the ecojoko clamp on the Linky).
 //
 // One Gladys device per ecojoko power meter, read-only sensors:
-//   - power            live draw, W                      (energy-sensor/power)
+//   - power            signed grid exchange, W            (grid-sensor/power)
+//                      import > 0, export < 0 — ecojoko reports ONE signed
+//                      value, which is exactly what this type is for
 //   - index            synthesized cumulative kWh        (energy-sensor/index)
 //                      -> Gladys derives its 30-min consumption + cost from it
 //   - today            grid consumption today, kWh       (energy-sensor/index-today)
@@ -28,8 +30,14 @@ export const FEATURE = {
   periodKey: (label) => `period-${slugify(label)}`,
 };
 
-// ecojoko clamps read up to 90 A: 30 kW leaves room for three-phase homes.
-const MAX_POWER_W = 30000;
+// Signed grid exchange: negative in solar surplus. The bounds are symmetric
+// and cover the largest common French subscription (12 kVA) rather than the
+// clamp's absolute ceiling — Gladys positions its gauge needle with them
+// (`(value - min) / (max - min)`), so a needlessly wide range would leave the
+// needle motionless around 0 W. A bigger installation still reports its exact
+// value, the gauge simply pins.
+const MIN_POWER_W = -12000;
+const MAX_POWER_W = 12000;
 const MAX_INDEX_KWH = 1000000000;
 const MAX_DAILY_KWH = 1000;
 
@@ -47,14 +55,14 @@ export function slugify(label) {
     .replace(/^-+|-+$/g, '');
 }
 
-function sensor(ids, key, name, category, type, unit, max) {
+function sensor(ids, key, name, category, type, unit, max, min = 0) {
   return {
     name,
     external_id: ids.feature(key),
     category,
     type,
     unit,
-    min: 0,
+    min,
     max,
     read_only: true,
     has_feedback: false,
@@ -79,16 +87,21 @@ export const powerMeter = {
    */
   buildDevice(gladys, snapshot, config) {
     const ids = gladys.externalIds(DEVICE_TYPE, this.platformId(snapshot));
-    const { ENERGY_SENSOR, ENERGY_PRODUCTION_SENSOR } = DEVICE_FEATURE_CATEGORIES;
+    const { ENERGY_SENSOR, ENERGY_PRODUCTION_SENSOR, GRID_SENSOR } = DEVICE_FEATURE_CATEGORIES;
     const features = [
+      // grid-sensor/power, not energy-sensor/power: the ecojoko clamp sits at
+      // the grid connection point and reports a SIGNED value (negative when
+      // solar surplus is exported), which is what this category was defined
+      // for. energy-sensor/power is house consumption and never goes below 0.
       sensor(
         ids,
         FEATURE.POWER,
         'Puissance instantanée',
-        ENERGY_SENSOR,
-        DEVICE_FEATURE_TYPES.ENERGY_SENSOR.POWER,
+        GRID_SENSOR,
+        DEVICE_FEATURE_TYPES.GRID_SENSOR.POWER,
         DEVICE_FEATURE_UNITS.WATT,
         MAX_POWER_W,
+        MIN_POWER_W,
       ),
       sensor(
         ids,

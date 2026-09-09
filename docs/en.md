@@ -36,6 +36,30 @@ Both refresh rates are configurable: live power (30 s by default) and daily
 statistics (5 min by default). Every reading is a request to the ecojoko
 cloud: going below a few seconds is pointless, the display itself is not faster.
 
+## Showing the power as a gauge
+
+The power is published as a **signed grid exchange**: positive when you draw
+from the grid, negative when your panels export. The declared scale runs from
+−12,000 to +12,000 W, so 0 W sits in the middle.
+
+On a Gladys dashboard, add a **Gauge** box, pick the _Live power_ feature, then
+turn on **custom colours**:
+
+- **low threshold at 0** with a **green** low colour: every negative value, so
+  every surplus, shows green;
+- **high threshold** at whatever you consider heavy draw (3,000 W for example)
+  with a **red** high colour;
+- the in-range colour applies between the two.
+
+## The energy dashboard
+
+Half-hour consumption and its cost are not computed by the integration: Gladys
+derives them from the **Consumption index**. Two conditions must be met, or the
+tile reads "no recent value":
+
+1. an **electricity contract filled in** in Gladys' energy settings;
+2. **at least 30 minutes** of index history, so a first delta exists.
+
 ## Good to know
 
 - **No official API.** ecojoko publishes none; the integration uses the
@@ -51,6 +75,8 @@ cloud: going below a few seconds is pointless, the display itself is not faster.
   Devices.
 - **One account, one gateway**: when several gateways are attached to the
   account, only the first one is supported.
+- **The "today" sensors reset at midnight** (Paris time), like the ecojoko app.
+  Only the cumulative index keeps growing.
 
 ## Troubleshooting
 

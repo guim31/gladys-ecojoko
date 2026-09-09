@@ -40,6 +40,33 @@ Les deux fréquences se règlent dans la configuration : la puissance instantan�
 est une requête vers le cloud ecojoko : inutile de descendre en dessous de
 quelques secondes, l'afficheur lui-même n'est pas plus rapide.
 
+## Afficher la puissance en jauge
+
+La puissance est publiée comme un **échange réseau signé** : positive quand vous
+tirez du courant, négative quand vos panneaux injectent. L'échelle déclarée va
+de −12 000 à +12 000 W, donc 0 W tombe au milieu.
+
+Sur un tableau de bord Gladys, ajoutez une boîte **Jauge**, choisissez la
+fonctionnalité _Puissance instantanée_, puis activez les **couleurs
+personnalisées** :
+
+- **seuil bas à 0** et couleur basse en **vert** : toute valeur négative, donc
+  toute surproduction, s'affiche en vert ;
+- **seuil haut** à la puissance que vous jugez élevée (3 000 W par exemple) et
+  couleur haute en **rouge** ;
+- la couleur intermédiaire s'applique entre les deux.
+
+## Le tableau de bord énergie
+
+La consommation par tranche de 30 minutes et son coût ne sont pas calculés par
+l'intégration : Gladys les dérive lui-même de l'**Index de consommation**. Deux
+conditions pour qu'ils se remplissent, sans quoi la vignette affiche « Pas de
+valeur récente » :
+
+1. un **contrat d'électricité renseigné** dans les réglages énergie de Gladys ;
+2. **au moins 30 minutes** d'index déjà remontées, le temps qu'un premier écart
+   soit mesurable.
+
 ## À savoir
 
 - **Aucune API officielle.** ecojoko n'en publie pas ; l'intégration utilise
@@ -56,6 +83,8 @@ quelques secondes, l'afficheur lui-même n'est pas plus rapide.
   configuration : les nouveaux capteurs apparaîtront dans Appareils.
 - **Un seul compte, une seule passerelle** : si plusieurs passerelles sont
   rattachées au compte, seule la première est prise en charge.
+- **Les capteurs du jour se remettent à zéro à minuit** (heure de Paris), comme
+  dans l'application ecojoko. Seul l'index cumulé continue de croître.
 
 ## Dépannage
 

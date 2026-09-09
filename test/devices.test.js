@@ -61,8 +61,13 @@ test('the meter carries a cumulative index Gladys can derive energy from', () =>
   assert.ok(index, 'index feature present');
   assert.equal(index.category, DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR);
   assert.equal(index.unit, DEVICE_FEATURE_UNITS.KILOWATT_HOUR);
-  const power = device.features.find((f) => f.type === DEVICE_FEATURE_TYPES.ENERGY_SENSOR.POWER);
+  // The live power is the SIGNED grid exchange (negative in solar surplus):
+  // grid-sensor/power, with a range that lets a gauge place its needle.
+  const power = device.features.find((f) => f.category === DEVICE_FEATURE_CATEGORIES.GRID_SENSOR);
+  assert.equal(power.type, DEVICE_FEATURE_TYPES.GRID_SENSOR.POWER);
   assert.equal(power.unit, DEVICE_FEATURE_UNITS.WATT);
+  assert.ok(power.min < 0, 'export must fit inside the declared range');
+  assert.equal(power.min, -power.max, 'symmetric so 0 W sits mid-gauge');
   const todays = device.features.filter(
     (f) => f.type === DEVICE_FEATURE_TYPES.ENERGY_SENSOR.INDEX_TODAY,
   );
@@ -109,6 +114,10 @@ test('live power is rounded to the watt; missing ambient values are skipped', ()
   const gladys = createFakeGladys();
   assert.deepEqual(powerMeter.statesFromRealtime(gladys, snapshot, 1234.6), [
     { device_feature_external_id: 'ecojoko-meter:4242-11:power', state: 1235 },
+  ]);
+  // Solar surplus: ecojoko sends a negative value, publish it as-is.
+  assert.deepEqual(powerMeter.statesFromRealtime(gladys, snapshot, -637.2), [
+    { device_feature_external_id: 'ecojoko-meter:4242-11:power', state: -637 },
   ]);
   const states = ambient.statesFromReading(gladys, snapshot, {
     temperature: { indoor: 21.5, outdoor: null },
