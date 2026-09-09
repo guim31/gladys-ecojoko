@@ -73,7 +73,7 @@ export function weekToDailyKwh(weekEntries, anyDateOfThatWeek, parseKwh) {
  * Create the store for one meter. `dataDir` is the writable folder; the file
  * is `<dataDir>/index-<meterKey>.json`.
  */
-export function createIndexStore({ dataDir, meterKey }) {
+export function createIndexStore({ dataDir, meterKey, label = 'consumption' }) {
   const file = path.join(dataDir, `index-${meterKey}.json`);
   let state = null;
 
@@ -127,7 +127,7 @@ export function createIndexStore({ dataDir, meterKey }) {
     if (state.completed_through === null) {
       // First run: the index starts today at "today so far".
       state.completed_through = yesterday;
-      logger.info(`Index initialized: counting from ${today}`);
+      logger.info(`${label} index initialized: counting from ${today}`);
     } else if (compareDates(state.completed_through, yesterday) < 0) {
       const gap = daysBetween(state.completed_through, yesterday);
       if (gap > MAX_BACKFILL_DAYS) {
@@ -150,7 +150,7 @@ export function createIndexStore({ dataDir, meterKey }) {
       }
       const kwh = known[day];
       if (kwh === undefined) {
-        logger.warn(`No consumption known for ${day}, counting it as 0 kWh`);
+        logger.warn(`No ${label} known for ${day}, counting it as 0 kWh`);
       } else {
         state.base_kwh += kwh;
       }

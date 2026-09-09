@@ -56,6 +56,14 @@ personnalisées** :
   couleur haute en **rouge** ;
 - la couleur intermédiaire s'applique entre les deux.
 
+## Si vous produisez
+
+Quand votre compte ecojoko remonte un surplus solaire, deux capteurs
+supplémentaires apparaissent : le **surplus du jour**, remis à zéro chaque nuit,
+et un **index de production injectée**, cumulé et jamais remis à zéro. Le second
+est le format que Gladys suivra pour la production, comme il le fait déjà pour la
+consommation.
+
 ## Le tableau de bord énergie
 
 La consommation par tranche de 30 minutes et son coût ne sont pas calculés par

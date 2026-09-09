@@ -32,6 +32,9 @@ export function createEngine({
   const client = clientFactory({ email: config.email, password: config.password });
   let snapshot = null;
   let indexStore = null;
+  // Second, independent fold for the exported solar surplus. Only created
+  // when the account actually reports one (`kwh_prod`).
+  let productionStore = null;
 
   const today = () => parisDate(now());
 
@@ -52,11 +55,18 @@ export function createEngine({
       },
       discoveredAt: now().toISOString(),
     };
-    indexStore = createIndexStore({
-      dataDir,
-      meterKey: `${gateway.gatewayId}-${gateway.powerMeterId}`,
-    });
+    const meterKey = `${gateway.gatewayId}-${gateway.powerMeterId}`;
+    indexStore = createIndexStore({ dataDir, meterKey });
     await indexStore.load();
+    productionStore = null;
+    if (todayStats.hasProduction) {
+      productionStore = createIndexStore({
+        dataDir,
+        meterKey: `${meterKey}-production`,
+        label: 'production',
+      });
+      await productionStore.load();
+    }
     logger.info(
       `Gateway ${gateway.gatewayId} (firmware ${gateway.firmware ?? '?'}), meter ${gateway.powerMeterId}` +
         `${gateway.tempHumId ? `, ambient ${gateway.tempHumId}` : ''}` +
@@ -97,6 +107,29 @@ export function createEngine({
       },
     });
 
+    // Cumulative exported-energy index, folded exactly like the consumption
+    // one. ecojoko reports the daily surplus with a sign that varies, so the
+    // magnitude is what gets folded (parseDayStats already does the abs()).
+    let productionIndex = null;
+    if (productionStore) {
+      const productionDaily = weekToDailyKwh(week, date, (entry) => {
+        const value = toNumberOrNull(entry?.kwh_prod);
+        return value === null ? null : Math.abs(value);
+      });
+      const folded = await productionStore.update({
+        today: date,
+        dailyKwh: productionDaily,
+        fetchWeek: async (isoDate) => {
+          const entries = await client.getWeekStats(gateway, isoDate);
+          return weekToDailyKwh(entries, isoDate, (entry) => {
+            const value = toNumberOrNull(entry?.kwh_prod);
+            return value === null ? null : Math.abs(value);
+          });
+        },
+      });
+      productionIndex = folded.index;
+    }
+
     let ambient = null;
     if (gateway.tempHumId && config.environment) {
       try {
@@ -115,6 +148,7 @@ export function createEngine({
       index,
       todayKwh: todayKwh ?? dayStats.kwh,
       kwhProd: dayStats.kwhProd,
+      productionIndex,
       periods: dayStats.periods,
       ambient,
     };
@@ -126,5 +160,6 @@ export function createEngine({
     readStats,
     getSnapshot: () => snapshot,
     getIndexState: () => indexStore?.getState() ?? null,
+    getProductionIndexState: () => productionStore?.getState() ?? null,
   };
 }

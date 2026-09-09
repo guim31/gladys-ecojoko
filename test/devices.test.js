@@ -85,10 +85,20 @@ test('tariff periods and solar surplus are opt-in / capability driven', () => {
   assert.equal(noPeriods.features.length, 3, 'power + index + today');
   const solar = { ...snapshot, capabilities: { ...snapshot.capabilities, hasProduction: true } };
   const withSolar = powerMeter.buildDevice(gladys, solar, config);
-  const prod = withSolar.features.find(
+  const prod = withSolar.features.filter(
     (f) => f.category === DEVICE_FEATURE_CATEGORIES.ENERGY_PRODUCTION_SENSOR,
   );
-  assert.equal(prod.type, DEVICE_FEATURE_TYPES.ENERGY_PRODUCTION_SENSOR.DAILY_PRODUCTION);
+  // A resettable daily counter AND the monotonic index Gladys tracks from.
+  assert.deepEqual(
+    prod.map((f) => f.type).sort(),
+    [
+      DEVICE_FEATURE_TYPES.ENERGY_PRODUCTION_SENSOR.DAILY_PRODUCTION,
+      DEVICE_FEATURE_TYPES.ENERGY_PRODUCTION_SENSOR.INDEX,
+    ].sort(),
+  );
+  for (const feature of prod) {
+    assert.equal(feature.unit, DEVICE_FEATURE_UNITS.KILOWATT_HOUR);
+  }
 });
 
 test('states from a stats refresh target the declared features only', () => {
@@ -108,6 +118,21 @@ test('states from a stats refresh target the declared features only', () => {
   assert.equal(byId['ecojoko-meter:4242-11:period-heures-creuses'], 1.5);
   assert.equal(byId['ecojoko-meter:4242-11:period-hp-rouge'], undefined);
   assert.equal(byId[`ecojoko-meter:4242-11:${FEATURE.PRODUCTION_TODAY}`], undefined, 'no solar');
+});
+
+test('a solar account publishes both the daily surplus and its cumulative index', () => {
+  const gladys = createFakeGladys();
+  const solar = { ...snapshot, capabilities: { ...snapshot.capabilities, hasProduction: true } };
+  const states = powerMeter.statesFromStats(gladys, solar, config, {
+    index: 10,
+    todayKwh: 4,
+    kwhProd: 1.25,
+    productionIndex: 87.5,
+    periods: [],
+  });
+  const byId = Object.fromEntries(states.map((s) => [s.device_feature_external_id, s.state]));
+  assert.equal(byId['ecojoko-meter:4242-11:production-today'], 1.25);
+  assert.equal(byId['ecojoko-meter:4242-11:production-index'], 87.5);
 });
 
 test('live power is rounded to the watt; missing ambient values are skipped', () => {

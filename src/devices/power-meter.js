@@ -10,6 +10,8 @@
 //   - today            grid consumption today, kWh       (energy-sensor/index-today)
 //   - production-today solar surplus exported today, kWh (energy-production-sensor/
 //                      daily-production), only when the account reports one
+//   - production-index cumulative exported energy, kWh   (energy-production-sensor/
+//                      index), same synthesis as the consumption index
 //   - period-<slug>    today's kWh per tariff period (HC/HP, Tempo colours...),
 //                      one per label found in the statistics, optional
 // -----------------------------------------------------------------------------
@@ -27,6 +29,7 @@ export const FEATURE = {
   INDEX: 'index',
   TODAY: 'today',
   PRODUCTION_TODAY: 'production-today',
+  PRODUCTION_INDEX: 'production-index',
   periodKey: (label) => `period-${slugify(label)}`,
 };
 
@@ -133,6 +136,18 @@ export const powerMeter = {
           DEVICE_FEATURE_UNITS.KILOWATT_HOUR,
           MAX_DAILY_KWH,
         ),
+        // Cumulative counterpart of the daily surplus. `daily-production` is a
+        // counter that resets every night; only a monotonic INDEX is the shape
+        // Gladys tracks production from, so publish both.
+        sensor(
+          ids,
+          FEATURE.PRODUCTION_INDEX,
+          'Index de production injectée',
+          ENERGY_PRODUCTION_SENSOR,
+          DEVICE_FEATURE_TYPES.ENERGY_PRODUCTION_SENSOR.INDEX,
+          DEVICE_FEATURE_UNITS.KILOWATT_HOUR,
+          MAX_INDEX_KWH,
+        ),
       );
     }
     if (config.sub_consumption) {
@@ -188,11 +203,19 @@ export const powerMeter = {
         state: stats.todayKwh,
       });
     }
-    if (snapshot.capabilities.hasProduction && Number.isFinite(stats.kwhProd)) {
-      states.push({
-        device_feature_external_id: ids.feature(FEATURE.PRODUCTION_TODAY),
-        state: stats.kwhProd,
-      });
+    if (snapshot.capabilities.hasProduction) {
+      if (Number.isFinite(stats.kwhProd)) {
+        states.push({
+          device_feature_external_id: ids.feature(FEATURE.PRODUCTION_TODAY),
+          state: stats.kwhProd,
+        });
+      }
+      if (Number.isFinite(stats.productionIndex)) {
+        states.push({
+          device_feature_external_id: ids.feature(FEATURE.PRODUCTION_INDEX),
+          state: stats.productionIndex,
+        });
+      }
     }
     if (config.sub_consumption) {
       const declared = new Set(snapshot.capabilities.periods.map(slugify));

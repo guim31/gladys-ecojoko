@@ -9,7 +9,7 @@ import { createClient } from '../src/ecojoko.js';
 import { startScheduler, MESSAGES } from '../src/scheduler.js';
 import { normalizeConfig } from '../src/config.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
-import { createFakeFetch, GOOD } from './helpers/fakeEcojoko.js';
+import { createFakeFetch, GOOD, weekEntries } from './helpers/fakeEcojoko.js';
 
 let dataDir;
 beforeEach(async () => {
@@ -32,6 +32,32 @@ function makeEngine(config, fakeOptions = {}) {
   });
   return { engine, fake };
 }
+
+test('a solar account gets a second, independent cumulative index', async () => {
+  // Same week, with an exported surplus on Monday and Tuesday.
+  const week = weekEntries();
+  week[0] = { ...week[0], kwh_prod: '-2.5' };
+  week[1] = { ...week[1], kwh_prod: '-1.25' };
+  const { engine } = makeEngine(normalizeConfig(GOOD), { week });
+  const snapshot = await engine.discover();
+  assert.equal(snapshot.capabilities.hasProduction, true);
+
+  const stats = await engine.readStats();
+  // Today is Tuesday: the index starts at today's surplus only, as the
+  // consumption one does, and the daily value is the magnitude.
+  assert.equal(stats.kwhProd, 1.25);
+  assert.equal(stats.productionIndex, 1.25);
+  assert.notEqual(engine.getProductionIndexState(), null);
+  assert.equal(engine.getIndexState().base_kwh, 0, 'the two folds are independent');
+});
+
+test('an account without surplus keeps no production index', async () => {
+  const { engine } = makeEngine(normalizeConfig(GOOD));
+  await engine.discover();
+  const stats = await engine.readStats();
+  assert.equal(stats.productionIndex, null);
+  assert.equal(engine.getProductionIndexState(), null);
+});
 
 test('discover takes a capabilities snapshot from this week statistics', async () => {
   const { engine } = makeEngine(normalizeConfig(GOOD));

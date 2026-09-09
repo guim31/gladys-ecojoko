@@ -51,6 +51,13 @@ turn on **custom colours**:
   with a **red** high colour;
 - the in-range colour applies between the two.
 
+## If you produce
+
+When your ecojoko account reports a solar surplus, two extra sensors show up:
+the **surplus today**, reset every night, and an **exported energy index**,
+cumulative and never reset. The latter is the shape Gladys tracks production
+from, as it already does for consumption.
+
 ## The energy dashboard
 
 Half-hour consumption and its cost are not computed by the integration: Gladys
