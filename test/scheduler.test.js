@@ -1,7 +1,7 @@
 // End-to-end of engine + scheduler against the scripted ecojoko service.
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createEngine } from '../src/engine.js';
@@ -177,4 +177,77 @@ test('a cloud outage after start flags disconnected after 3 failures, then recov
   await drain();
   assert.equal(gladys.connectionStatuses.at(-1).connected, true);
   stop();
+});
+
+test('the engine keeps the last readings in memory for the widgets', async () => {
+  const { engine, fake } = makeEngine(normalizeConfig(GOOD));
+  assert.deepEqual(engine.getLastReadings(), {
+    power: null,
+    stats: null,
+    week: null,
+    previousWeek: null,
+  });
+  await engine.discover();
+  let readings = engine.getLastReadings();
+  assert.equal(readings.power, null);
+  assert.equal(readings.stats, null);
+  // Discovery already read this week: the week widget can show it right away.
+  assert.equal(readings.week.monday, '2026-09-07');
+  assert.equal(readings.previousWeek, null);
+
+  await engine.readRealtime();
+  await engine.readStats();
+  const before = fake.state.calls.length;
+  readings = engine.getLastReadings();
+  assert.equal(fake.state.calls.length, before, 'reading the cache costs no request');
+  assert.deepEqual(readings.power, { watts: 1234, at: NOW.toISOString() });
+  assert.equal(readings.stats.date, '2026-09-08');
+  assert.equal(readings.stats.todayKwh, 11);
+  assert.equal(readings.stats.at, NOW.toISOString());
+  assert.deepEqual(readings.stats.ambient.humidity, { indoor: 55, outdoor: 72 });
+  assert.equal(readings.week.days.length, 7);
+  assert.deepEqual(readings.week.days[1], {
+    date: '2026-09-08',
+    kwh: 11,
+    kwhProd: null,
+    periods: [
+      { label: 'Heures Creuses', kwh: 5 },
+      { label: 'Heures Pleines', kwh: 6 },
+    ],
+  });
+  assert.equal(readings.previousWeek, null, 'never fetched just for the widgets');
+});
+
+test('the previous week stays in memory once the index backfill fetched it', async () => {
+  // Monday 2026-09-14, with an index last folded through Saturday the 12th:
+  // folding Sunday the 13th makes the store fetch the week of the 7th.
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(
+    path.join(dataDir, 'index-4242-11.json'),
+    JSON.stringify({
+      version: 1,
+      completed_through: '2026-09-12',
+      base_kwh: 50,
+      last_index_kwh: 50,
+    }),
+  );
+  const fake = createFakeFetch({
+    weeksByDate: { '2026-09-13': weekEntries() },
+    week: weekEntries().map((entry) => ({ ...entry, kwh: 1 })),
+  });
+  const engine = createEngine({
+    config: normalizeConfig(GOOD),
+    dataDir,
+    now: () => new Date('2026-09-14T08:00:00Z'),
+    clientFactory: (creds) => createClient(creds, { fetchImpl: fake.fetchImpl }),
+  });
+  await engine.discover();
+  assert.equal(engine.getLastReadings().previousWeek, null, 'not before the backfill');
+  await engine.readStats();
+  const readings = engine.getLastReadings();
+  assert.equal(readings.week.monday, '2026-09-14');
+  assert.equal(readings.previousWeek?.monday, '2026-09-07');
+  assert.equal(readings.previousWeek.days[6].kwh, 16, 'Sunday the 13th of the fake week');
+  // Only two weeks are ever kept.
+  assert.equal(fake.state.calls.filter((c) => c.path.includes('/powerstat/')).length, 3);
 });

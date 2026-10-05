@@ -8,14 +8,10 @@
   },
   "version": "1.0.3",
   "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.0.3",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-ecojoko/main/cover.png",
-  "categories": [
-    "energy"
-  ],
-  "transports": [
-    "cloud"
-  ],
+  "categories": ["energy"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "intro",
@@ -129,6 +125,83 @@
         "fr": "Tester la connexion"
       },
       "timeout_seconds": 60
+    }
+  ],
+  "widgets": [
+    {
+      "key": "energy",
+      "label": {
+        "en": "Energy",
+        "fr": "Énergie"
+      },
+      "description": {
+        "en": "Live power, today's consumption and surplus, the power curve, tariff periods.",
+        "fr": "Puissance en direct, consommation et surplus du jour, courbe de puissance, périodes."
+      },
+      "icon": "zap",
+      "settings": [
+        {
+          "key": "interval",
+          "type": "select",
+          "label": {
+            "en": "Power chart window",
+            "fr": "Fenêtre de la courbe"
+          },
+          "description": {
+            "en": "History shown by the power chart.",
+            "fr": "Historique affiché par la courbe de puissance."
+          },
+          "required": false,
+          "default": "last-day",
+          "options": [
+            {
+              "value": "last-hour",
+              "label": {
+                "en": "Last hour",
+                "fr": "Dernière heure"
+              }
+            },
+            {
+              "value": "last-day",
+              "label": {
+                "en": "Last 24 hours",
+                "fr": "Dernières 24 heures"
+              }
+            },
+            {
+              "value": "last-week",
+              "label": {
+                "en": "Last 7 days",
+                "fr": "7 derniers jours"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "week",
+      "label": {
+        "en": "This week",
+        "fr": "Semaine"
+      },
+      "description": {
+        "en": "Consumption per day of the current week, total, average and hungriest day.",
+        "fr": "Consommation par jour de la semaine en cours, total, moyenne et jour le plus gourmand."
+      },
+      "icon": "bar-chart-2"
+    },
+    {
+      "key": "ambient",
+      "label": {
+        "en": "Indoor climate",
+        "fr": "Ambiance"
+      },
+      "description": {
+        "en": "Indoor and outdoor temperature and humidity of the ecojoko display.",
+        "fr": "Température et humidité intérieures et extérieures de l'afficheur ecojoko."
+      },
+      "icon": "thermometer"
     }
   ]
 }

@@ -64,6 +64,40 @@ et un **index de production injectée**, cumulé et jamais remis à zéro. Le se
 est le format que Gladys suivra pour la production, comme il le fait déjà pour la
 consommation.
 
+## Widgets du tableau de bord
+
+Avec Gladys 5.1 ou plus récent, l'intégration propose trois widgets (**Modifier
+le tableau de bord** → **Ajouter un widget**). Ils lisent les derniers relevés
+que l'intégration a déjà en mémoire : un widget n'ajoute **aucune requête** vers
+le cloud ecojoko. Les tuiles et les courbes suivent les capteurs de l'appareil
+`ecojoko` en direct : ajoutez l'appareil à Gladys avant de poser un widget,
+sinon elles restent vides.
+
+- **Énergie** — trois tuiles en direct, la **puissance** (positive quand vous
+  tirez du réseau, négative quand vous injectez), la **consommation du jour**
+  et, si votre compte remonte un surplus solaire, le **surplus injecté du
+  jour** ; la **courbe de puissance** sur la fenêtre choisie dans les réglages
+  du widget (dernière heure, dernières 24 heures par défaut, 7 derniers
+  jours) ; puis une liste avec les **kWh du jour par période tarifaire** (si
+  l'option « Un capteur par période tarifaire » est active et que votre tarif
+  en déclare) et l'heure du **dernier relevé**. Rafraîchi toutes les 30 s.
+- **Semaine** — un **bâton par jour** de la semaine en cours (du lundi à
+  aujourd'hui, les jours à venir sont omis), plus une série _Injecté_ si vous
+  produisez ; en dessous, le **total de la semaine**, la **moyenne par jour**,
+  le **jour le plus gourmand** et, quand l'intégration l'a lue pour rattraper
+  l'index (le premier relevé d'un lundi, ou après un arrêt), la **semaine
+  dernière**. Sans réglage. Rafraîchi toutes les 15 min.
+- **Ambiance** — les **températures** et **humidités** intérieures et
+  extérieures en tuiles (celles que votre afficheur remonte), et la **courbe
+  des températures** sur 24 heures. Sans l'appareil `ecojoko (ambiance)`, ou
+  si l'option « Température et humidité ambiantes » est désactivée, le widget
+  l'explique au lieu d'afficher des cases vides. Rafraîchi toutes les 5 min.
+
+Les courbes de puissance et de température sont celles que Gladys garde en
+historique : elles se remplissent à partir du moment où l'appareil est ajouté,
+pas avant. Les kWh des widgets sont arrondis au dixième, comme dans
+l'application ecojoko.
+
 ## Le tableau de bord énergie
 
 La consommation par tranche de 30 minutes et son coût ne sont pas calculés par
@@ -105,5 +139,8 @@ valeur récente » :
   sans intervention.
 - _Pas d'appareil « ambiance »_ : votre compte ne remonte pas de capteur
   température/humidité, ou l'option est désactivée dans la configuration.
+- _Les widgets n'apparaissent pas_ : ils demandent Gladys 5.1 ou plus récent.
+  _Des tuiles vides_ : l'appareil `ecojoko` (ou `ecojoko (ambiance)`) n'a pas
+  encore été ajouté à Gladys, ou n'a pas reçu son premier relevé.
 
 Projet communautaire indépendant, sans lien avec la société ecojoko.

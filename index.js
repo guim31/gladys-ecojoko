@@ -9,6 +9,7 @@
 //   - src/scheduler.js    the two timers, state publication, failure policy
 //   - src/devices/        the Gladys device payloads
 //   - src/actions.js      the Configuration-screen buttons
+//   - src/widgets.js      the dashboard widget contents (Gladys 5.1+)
 //
 // Environment variables provided by the Gladys supervisor to the container:
 //   - GLADYS_HOST_API_URL, GLADYS_INTEGRATION_TOKEN, GLADYS_INTEGRATION_SELECTOR
@@ -22,6 +23,7 @@ import { createEngine } from './src/engine.js';
 import { startScheduler, MESSAGES } from './src/scheduler.js';
 import { buildDiscoveredDevices } from './src/devices/index.js';
 import { ACTIONS } from './src/actions.js';
+import { WIDGET, WIDGET_BUILDERS, widgetFeatureIds } from './src/widgets.js';
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 
@@ -105,6 +107,25 @@ gladys.onSetValue(async (device, feature) => {
 // --- Manifest actions --------------------------------------------------------
 for (const [key, handler] of Object.entries(ACTIONS)) {
   gladys.onAction(key, (fields) => handler({ fields, config, createEngine, dataDir: DATA_DIR }));
+}
+
+// --- Dashboard widgets (Gladys 5.1+) ------------------------------------------
+// Pure builders over the engine's last readings: a widget never calls ecojoko.
+// The tiles and the power/temperature charts bind the published features, so
+// they move with the states the scheduler pushes; the rest of a content is
+// re-pulled by the core on its `ttl_seconds`.
+for (const key of Object.values(WIDGET)) {
+  gladys.onWidgetGet(key, async ({ settings, language }) => {
+    const snapshot = engine?.getSnapshot() ?? null;
+    return WIDGET_BUILDERS[key]({
+      snapshot,
+      readings: snapshot ? engine.getLastReadings() : null,
+      config,
+      ids: snapshot ? widgetFeatureIds(gladys, snapshot) : {},
+      language: language ?? 'en',
+      settings: settings ?? {},
+    });
+  });
 }
 
 // --- Configuration updated by the user ---------------------------------------
