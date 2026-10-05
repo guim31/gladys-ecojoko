@@ -16,6 +16,8 @@ import {
   buildWeekContent,
   buildAmbientContent,
   widgetFeatureIds,
+  isStale,
+  formatTime,
   formatKwh,
   weekdayName,
 } from '../src/widgets.js';
@@ -85,6 +87,8 @@ function inputs(overrides = {}) {
     ids: snap ? widgetFeatureIds(gladys, snap) : {},
     language: overrides.language ?? 'fr',
     settings: overrides.settings ?? {},
+    // One minute after the fake readings.
+    now: overrides.now ?? '2026-09-08T08:31:00.000Z',
   };
 }
 
@@ -339,4 +343,59 @@ test('formatting helpers follow the language', () => {
   assert.equal(formatKwh(1234.5, 'en'), '1,234.5 kWh');
   assert.equal(weekdayName('2026-09-13', 'fr'), 'Dimanche');
   assert.equal(weekdayName('2026-09-13', 'en'), 'Sunday');
+});
+
+test('energy: the last reading turns orange when stale, and shows its day when not today', () => {
+  const stale = buildEnergyContent(inputs({ now: '2026-09-08T09:00:00.000Z' }));
+  const row = (content) => byType(content, 'status')[0].items.at(-1);
+  assert.equal(row(stale).color, 'warning', '30 min > 3 × 300 s');
+  assert.equal(row(stale).value, '10:30', 'same Paris day: time only');
+  const fresh = buildEnergyContent(inputs({ now: '2026-09-08T08:40:00.000Z' }));
+  assert.equal(row(fresh).color, 'success');
+  const nextDay = buildEnergyContent(inputs({ now: '2026-09-09T06:00:00.000Z' }));
+  assert.deepEqual(validateWidgetContent(nextDay), []);
+  assert.equal(row(nextDay).value, '08/09 10:30');
+  assert.equal(row(nextDay).color, 'warning');
+  // The threshold follows the configured statistics cadence.
+  const slow = buildEnergyContent(
+    inputs({ now: '2026-09-08T09:00:00.000Z', config: { stats_frequency: 3600 } }),
+  );
+  assert.equal(row(slow).color, 'success');
+  assert.equal(isStale('2026-09-08T08:00:00Z', '2026-09-08T08:15:01Z', 300), true);
+  assert.equal(formatTime('2026-09-08T08:30:00Z', 'en'), '10:30');
+});
+
+test('week: early on a Monday, last week is shown while this week has no value', () => {
+  const mondayStats = { ...readings().stats, date: '2026-09-14', at: '2026-09-14T04:05:00.000Z' };
+  const thisWeek = {
+    monday: '2026-09-14',
+    days: weekDays([]).map((day, i) => ({ ...day, date: `2026-09-${14 + i}` })),
+  };
+  const lastWeek = { monday: '2026-09-07', days: weekDays([12, 11, 10, 9, 8, 7, 6], [1, 2]) };
+  const withPrevious = buildWeekContent(
+    inputs({
+      snapshot: snapshot({ hasProduction: true }),
+      readings: { ...readings(), stats: mondayStats, week: thisWeek, previousWeek: lastWeek },
+    }),
+  );
+  assert.deepEqual(validateWidgetContent(withPrevious), []);
+  const [chart] = byType(withPrevious, 'chart');
+  assert.equal(chart.title.fr, 'Semaine dernière');
+  assert.equal(chart.series[0].name.fr, 'Semaine dernière');
+  assert.equal(chart.series[0].points.length, 7);
+  assert.equal(chart.series[1].name.fr, 'Injecté');
+  const rows = byType(withPrevious, 'status')[0].items.map((i) => [i.label.fr, i.value]);
+  assert.deepEqual(rows, [
+    ['Semaine dernière', '63 kWh'],
+    ['Moyenne par jour', '9 kWh'],
+    ['Jour le plus gourmand', 'Lundi · 12 kWh'],
+    ['Injecté cette semaine', '3 kWh'],
+  ]);
+
+  const alone = buildWeekContent(
+    inputs({ readings: { ...readings(), stats: mondayStats, week: thisWeek, previousWeek: null } }),
+  );
+  assert.deepEqual(validateWidgetContent(alone), []);
+  assert.equal(alone.components.length, 1);
+  assert.match(alone.components[0].text.fr, /Aucune consommation relevée cette semaine/);
 });

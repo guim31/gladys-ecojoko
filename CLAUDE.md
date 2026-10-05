@@ -2,7 +2,7 @@
 
 Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko.
 
-Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.13.0, `gladys_version` `>=4.86.0`). Mainteneur : Guilhem (`guim31`).
+Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.14.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
 
 Ce fichier rassemble ce qu'une session de code doit savoir et qui ne se lit pas dans le code : choix de conception, faits vérifiés en réel, pièges déjà payés. Le compléter quand un nouveau piège est découvert.
 
@@ -56,7 +56,12 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
   puissance, les dernières statistiques et les semaines brutes qu'il a vues (`getLastReadings()`
   dans `src/engine.js`). La semaine précédente n'y est que si le rattrapage de l'index l'a lue
   (premier relevé d'un lundi, ou reprise après un arrêt) : la ligne « Semaine dernière » du widget
-  est donc occasionnelle, par choix, plutôt que de rajouter un appel `/powerstat/w/`.
+  est donc occasionnelle, par choix, plutôt que de rajouter un appel `/powerstat/w/`. Tôt le
+  lundi, sans valeur pour la semaine en cours, le widget montre la semaine dernière si elle est en
+  mémoire, sinon un texte dédié.
+- « Dernier relevé » du widget Énergie : `now` est injecté dans le builder (pur) ; la ligne passe
+  en `warning` au-delà de 3 × `stats_frequency`, et porte la date quand le relevé n'est pas du jour
+  (Paris).
 - Tuiles et courbes de puissance/température sont **liées aux fonctionnalités** publiées
   (`device_feature`, `device_features`) : elles vivent sans rafraîchissement du contenu, mais
   restent vides tant que l'appareil n'est pas ajouté à Gladys. Seul le graphique « Semaine » est

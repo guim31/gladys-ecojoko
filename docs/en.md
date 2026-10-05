@@ -72,10 +72,12 @@ device to Gladys before placing a widget, or they stay empty.
   curve** over the window chosen in the widget settings (last hour, last 24
   hours by default, last 7 days); then a list with **today's kWh per tariff
   period** (when the "One sensor per tariff period" option is on and your
-  tariff declares some) and the time of the **last reading**. Refreshed every
-  30 s.
+  tariff declares some) and the time of the **last reading**, orange (with its
+  date) once it is older than three statistics cycles. Refreshed every 30 s.
 - **This week** — one **bar per day** of the current week (Monday to today,
-  the days ahead are omitted), plus an _Exported_ series when you produce;
+  the days ahead are omitted; early on a Monday, before the first value of the
+  week, last week is shown instead when it is in memory), plus an _Exported_
+  series when you produce;
   below, the **week total**, the **daily average**, the **hungriest day** and,
   when the integration read it to backfill the index (the first reading of a
   Monday, or after a stop), **last week**. No setting. Refreshed every 15 min.

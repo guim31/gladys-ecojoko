@@ -80,10 +80,12 @@ sinon elles restent vides.
   du widget (dernière heure, dernières 24 heures par défaut, 7 derniers
   jours) ; puis une liste avec les **kWh du jour par période tarifaire** (si
   l'option « Un capteur par période tarifaire » est active et que votre tarif
-  en déclare) et l'heure du **dernier relevé**. Rafraîchi toutes les 30 s.
+  en déclare) et l'heure du **dernier relevé**, en orange (avec sa date) quand il
+  a plus de trois cycles de statistiques. Rafraîchi toutes les 30 s.
 - **Semaine** — un **bâton par jour** de la semaine en cours (du lundi à
-  aujourd'hui, les jours à venir sont omis), plus une série _Injecté_ si vous
-  produisez ; en dessous, le **total de la semaine**, la **moyenne par jour**,
+  aujourd'hui, les jours à venir sont omis ; tôt le lundi, avant la première
+  valeur de la semaine, c'est la semaine dernière qui s'affiche quand elle est en
+  mémoire), plus une série _Injecté_ si vous produisez ; en dessous, le **total de la semaine**, la **moyenne par jour**,
   le **jour le plus gourmand** et, quand l'intégration l'a lue pour rattraper
   l'index (le premier relevé d'un lundi, ou après un arrêt), la **semaine
   dernière**. Sans réglage. Rafraîchi toutes les 15 min.

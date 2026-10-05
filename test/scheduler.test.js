@@ -191,7 +191,8 @@ test('the engine keeps the last readings in memory for the widgets', async () =>
   let readings = engine.getLastReadings();
   assert.equal(readings.power, null);
   assert.equal(readings.stats, null);
-  // Discovery already read this week: the week widget can show it right away.
+  // Discovery already read this week; the week widget still waits for the
+  // first statistics (`stats`) before it shows it.
   assert.equal(readings.week.monday, '2026-09-07');
   assert.equal(readings.previousWeek, null);
 

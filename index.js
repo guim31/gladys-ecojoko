@@ -124,6 +124,7 @@ for (const key of Object.values(WIDGET)) {
       ids: snapshot ? widgetFeatureIds(gladys, snapshot) : {},
       language: language ?? 'en',
       settings: settings ?? {},
+      now: new Date(),
     });
   });
 }
