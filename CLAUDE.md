@@ -2,15 +2,18 @@
 
 Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko.
 
-Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.13.0, `gladys_version` `>=4.86.0`). Mainteneur : Guilhem (`guim31`).
+Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.14.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
 
 Ce fichier rassemble ce qu'une session de code doit savoir et qui ne se lit pas dans le code : choix de conception, faits vérifiés en réel, pièges déjà payés. Le compléter quand un nouveau piège est découvert.
 
-## État au 02/10/2026
+## État au 05/10/2026
 
-Version 1.0.2 publiée, indexée dans le store. **Un commit de `main` n'est pas publié** : l'index
-de production cumulé (« production: publish a cumulative exported-energy index », 09/09/2026),
-qui attend une Release patch.
+Version 1.0.3 publiée (index de production cumulé compris), indexée dans le store.
+
+Branche `feat/dashboard-widgets` (PR brouillon vers `main`) : trois widgets de tableau de bord
+(`energy`, `week`, `ambient`), SDK monté à `^0.14.0`, `gladys_version` à `>=5.1.0`. Rien de tout
+cela n'a été vu sur une instance Gladys ni avec un compte ecojoko : seuls la suite de tests, le
+validateur de contenu du SDK et le validateur du store ont tourné. À faire tester par Pat.
 
 Guilhem n'a pas d'ecojoko : les retours réels viennent de **Pat**, producteur solaire, sur le fil
 https://community.gladysassistant.com/t/10833. Validée en réel le 09/09/2026, chiffres,
@@ -49,6 +52,24 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
   de production 30 min : `addEnergyFeatures` du cœur ne dérive que la consommation. Il faudrait
   une PR du cœur pour le type PRODUCTION.
 - Une jauge centrée sur zéro est impossible dans Gladys (`radialBar` à une seule série).
+- **Les widgets ne coûtent aucune requête** : le moteur garde en mémoire le dernier relevé de
+  puissance, les dernières statistiques et les semaines brutes qu'il a vues (`getLastReadings()`
+  dans `src/engine.js`). La semaine précédente n'y est que si le rattrapage de l'index l'a lue
+  (premier relevé d'un lundi, ou reprise après un arrêt) : la ligne « Semaine dernière » du widget
+  est donc occasionnelle, par choix, plutôt que de rajouter un appel `/powerstat/w/`. Tôt le
+  lundi, sans valeur pour la semaine en cours, le widget montre la semaine dernière si elle est en
+  mémoire, sinon un texte dédié.
+- « Dernier relevé » du widget Énergie : `now` est injecté dans le builder (pur) ; la ligne passe
+  en `warning` au-delà de 3 × `stats_frequency`, et porte la date quand le relevé n'est pas du jour
+  (Paris).
+- Tuiles et courbes de puissance/température sont **liées aux fonctionnalités** publiées
+  (`device_feature`, `device_features`) : elles vivent sans rafraîchissement du contenu, mais
+  restent vides tant que l'appareil n'est pas ajouté à Gladys. Seul le graphique « Semaine » est
+  une série inline (kWh du jour placés à midi Paris, `parisNoonIso`), les jours à venir omis.
+- Pas d'appel à `requestWidgetRefresh` : le `ttl_seconds` suffit (30 s, 900 s, 300 s) et les
+  tuiles sont déjà en direct. Aucun bouton, donc pas d'`action_timeout_seconds`.
+- Les builders de `src/widgets.js` sont purs ; `widgetFeatureIds(gladys, snapshot)` rederive les
+  `external_id` exactement comme `src/devices/` (même `gladys.externalIds(type, platformId)`).
 
 ## Travailler sur ce dépôt
 
@@ -56,7 +77,8 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
   `npm test` (`node --test`). Prettier contrôle **aussi le Markdown** : lancer `npm run format`
   après avoir modifié ce fichier ou le README, sinon la CI tombe.
 - La CI tourne en Node 24. Une session cloud a Node 22 par défaut, ce qui suffit (`engines` :
-  `>=20`).
+  `>=20`). Le validateur du store exige Node 24 (`EBADENGINE`) mais tourne quand même en 22.
+- Le passage du SDK 0.13 à 0.14 n'a rien cassé : les 50 tests existants passent sans retouche.
 - Une session de code n'a **ni instance Gladys ni appareil réel**. La suite de tests, le lint et
   le validateur du store sont les seules vérifications possibles : le test réel passe par
   Guilhem ou par les testeurs du forum. Le dire, plutôt que de conclure que « ça marche ».

@@ -85,3 +85,39 @@ export function weekDates(isoDate) {
   const monday = mondayOf(isoDate);
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 }
+
+/**
+ * The instant of 12:00 in Paris on `isoDate`, as an ISO 8601 string. Used to
+ * place a daily value on a chart: noon keeps the bar inside its day whatever
+ * the timezone of the browser reading it.
+ */
+export function parisNoonIso(isoDate) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const guess = Date.UTC(year, month - 1, day, 12);
+  // Paris wall-clock of the guess, read back as if it were UTC: the
+  // difference is the offset of Paris at that instant (DST included).
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: TIMEZONE,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+    })
+      .formatToParts(new Date(guess))
+      .filter((p) => p.type !== 'literal')
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  const wallClock = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return new Date(guess - (wallClock - guess)).toISOString();
+}

@@ -6,13 +6,16 @@
 //   - discover()     : log in, find the gateway, take a capabilities snapshot
 //   - readRealtime() : live power (W)
 //   - readStats()    : today's totals, the synthesized index, ambient values
+// It also keeps the LAST readings in memory (`getLastReadings()`): the
+// dashboard widgets read them instead of calling ecojoko again, so a widget
+// never adds a request to the two scheduled cadences.
 // Nothing here knows about Gladys device payloads (see src/devices/).
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { createClient, parseDayStats, toNumberOrNull } from './ecojoko.js';
 import { createIndexStore, weekToDailyKwh } from './index-store.js';
-import { parisDate, weekdayIndex } from './dates.js';
+import { addDays, mondayOf, parisDate, weekDates, weekdayIndex } from './dates.js';
 
 const logger = createLogger({ name: 'engine' });
 
@@ -35,8 +38,53 @@ export function createEngine({
   // Second, independent fold for the exported solar surplus. Only created
   // when the account actually reports one (`kwh_prod`).
   let productionStore = null;
+  // Last readings, for the dashboard widgets (never an extra API call).
+  let lastPower = null; // { watts, at }
+  let lastStats = null; // see getLastReadings()
+  // Raw week statistics seen lately, keyed by their Monday: the current week
+  // (every readStats) and, when the index backfill fetched it, the previous
+  // one. Nothing else is ever kept.
+  const weeksByMonday = new Map();
 
   const today = () => parisDate(now());
+
+  /**
+   * Remember a raw 7-entry week and forget anything older than last week.
+   */
+  function rememberWeek(anyDateOfThatWeek, entries) {
+    if (!Array.isArray(entries) || entries.length !== 7) {
+      return;
+    }
+    const monday = mondayOf(anyDateOfThatWeek);
+    weeksByMonday.set(monday, entries);
+    const keep = new Set([
+      monday,
+      addDays(monday, -7),
+      mondayOf(today()),
+      addDays(mondayOf(today()), -7),
+    ]);
+    for (const key of weeksByMonday.keys()) {
+      if (!keep.has(key)) {
+        weeksByMonday.delete(key);
+      }
+    }
+  }
+
+  /**
+   * The seven days (Monday..Sunday) of a remembered week, parsed, or null.
+   * @returns {{ monday: string, days: Array<{ date, kwh, kwhProd, periods }> }|null}
+   */
+  function parsedWeek(monday) {
+    const entries = weeksByMonday.get(monday);
+    if (!entries) {
+      return null;
+    }
+    const days = weekDates(monday).map((date, i) => {
+      const day = parseDayStats(entries[i]);
+      return { date, kwh: day.kwh, kwhProd: day.kwhProd, periods: day.periods };
+    });
+    return { monday, days };
+  }
 
   /**
    * Log in, locate the gateway and read this week's statistics once to learn
@@ -45,6 +93,7 @@ export function createEngine({
   async function discover() {
     const gateway = await client.getGateway();
     const week = await client.getWeekStats(gateway, today());
+    rememberWeek(today(), week);
     const todayStats = parseDayStats(week[weekdayIndex(today())]);
     snapshot = {
       gateway,
@@ -85,7 +134,9 @@ export function createEngine({
 
   async function readRealtime() {
     const { gateway } = requireSnapshot();
-    return client.getRealtimePower(gateway);
+    const watts = await client.getRealtimePower(gateway);
+    lastPower = { watts, at: now().toISOString() };
+    return watts;
   }
 
   /**
@@ -96,6 +147,7 @@ export function createEngine({
     const { gateway } = requireSnapshot();
     const date = today();
     const week = await client.getWeekStats(gateway, date);
+    rememberWeek(date, week);
     const dayStats = parseDayStats(week[weekdayIndex(date)]);
     const dailyKwh = weekToDailyKwh(week, date, (entry) => toNumberOrNull(entry?.kwh));
     const { index, todayKwh } = await indexStore.update({
@@ -103,6 +155,7 @@ export function createEngine({
       dailyKwh,
       fetchWeek: async (isoDate) => {
         const entries = await client.getWeekStats(gateway, isoDate);
+        rememberWeek(isoDate, entries);
         return weekToDailyKwh(entries, isoDate, (entry) => toNumberOrNull(entry?.kwh));
       },
     });
@@ -121,6 +174,7 @@ export function createEngine({
         dailyKwh: productionDaily,
         fetchWeek: async (isoDate) => {
           const entries = await client.getWeekStats(gateway, isoDate);
+          rememberWeek(isoDate, entries);
           return weekToDailyKwh(entries, isoDate, (entry) => {
             const value = toNumberOrNull(entry?.kwh_prod);
             return value === null ? null : Math.abs(value);
@@ -144,7 +198,7 @@ export function createEngine({
       }
     }
 
-    return {
+    const stats = {
       index,
       todayKwh: todayKwh ?? dayStats.kwh,
       kwhProd: dayStats.kwhProd,
@@ -152,12 +206,36 @@ export function createEngine({
       periods: dayStats.periods,
       ambient,
     };
+    lastStats = { ...stats, date, at: now().toISOString() };
+    return stats;
+  }
+
+  /**
+   * What the widgets display: the last live power, the last statistics and
+   * the week(s) in memory. Null fields mean "not read yet". Never triggers a
+   * request.
+   * @returns {{
+   *   power: { watts: number, at: string }|null,
+   *   stats: { date, at, todayKwh, kwhProd, periods, ambient }|null,
+   *   week: { monday, days }|null,
+   *   previousWeek: { monday, days }|null,
+   * }}
+   */
+  function getLastReadings() {
+    const monday = lastStats ? mondayOf(lastStats.date) : mondayOf(today());
+    return {
+      power: lastPower,
+      stats: lastStats,
+      week: parsedWeek(monday),
+      previousWeek: parsedWeek(addDays(monday, -7)),
+    };
   }
 
   return {
     discover,
     readRealtime,
     readStats,
+    getLastReadings,
     getSnapshot: () => snapshot,
     getIndexState: () => indexStore?.getState() ?? null,
     getProductionIndexState: () => productionStore?.getState() ?? null,

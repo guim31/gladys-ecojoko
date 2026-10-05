@@ -9,6 +9,7 @@ Two devices: the **meter** (live power in W, a synthesized cumulative index in
 kWh Gladys derives its energy dashboard from, today's consumption, optionally
 per tariff period and the solar surplus) and, when the account reports it, the
 **ambient** sensor of the display (indoor/outdoor temperature and humidity).
+Three **dashboard widgets** (Gladys 5.1+): energy, this week, indoor climate.
 
 ![Cover](cover.png)
 
@@ -47,6 +48,24 @@ Two points worth knowing before hacking on it:
   screen posts the payload as-is and nothing infers one flag from the other.
   The devices here say `should_poll: false` explicitly, and `onPoll` still
   answers with an immediate reading if someone turns polling on by hand.
+
+## Dashboard widgets (Gladys 5.1+)
+
+| Widget         | Key       | Shows                                                                                                                                                       | Settings                                               | ttl    |
+| -------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------ |
+| Energy         | `energy`  | live tiles bound to the meter features (power, today, exported today on a solar account), the power chart, today's tariff periods and the last reading      | `interval`: last-hour / last-day (default) / last-week | 30 s   |
+| This week      | `week`    | one bar per elapsed day of the week (inline series, plus _Exported_ on a solar account), week total, daily average, hungriest day, last week when in memory | none                                                   | 15 min |
+| Indoor climate | `ambient` | live tiles bound to the ambient features (the ones reported), the indoor/outdoor temperature chart of the day; an explanatory text when unavailable         | none                                                   | 5 min  |
+
+The builders live in `src/widgets.js` and are pure: they take the engine's
+**last readings** (`engine.getLastReadings()`: live power, today's statistics,
+the raw week in memory and, when the index backfill fetched it, the previous
+week) and never call ecojoko. Tiles and the power/temperature charts bind the
+published feature `external_id`s (`device_feature` / `device_features`), so
+they follow the states the scheduler pushes with no refresh of the content; the
+week chart is an inline series (daily kWh at Paris noon). Every content is
+checked by the SDK's `validateWidgetContent` in the tests. No button, no
+image, no action handler.
 
 ## Development
 
