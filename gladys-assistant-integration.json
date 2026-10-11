@@ -4,7 +4,9 @@
   "name": "ecojoko",
   "description": {
     "en": "Live power, daily consumption and ambient sensors from your ecojoko energy assistant.",
-    "fr": "Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko."
+    "fr": "Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko.",
+    "de": "Aktuelle Leistung, Tagesverbrauch und Raumklimasensoren deines ecojoko-Energieassistenten.",
+    "es": "Potencia en directo, consumo diario y sensores ambientales de su asistente energético ecojoko."
   },
   "version": "1.1.0",
   "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.1.0",
@@ -18,18 +20,24 @@
       "type": "section",
       "label": {
         "en": "How it works",
-        "fr": "Fonctionnement"
+        "fr": "Fonctionnement",
+        "de": "So funktioniert es",
+        "es": "Funcionamiento"
       },
       "description": {
         "en": "Your ecojoko sensor sends its readings to the ecojoko cloud; this integration reads them back with your ecojoko account (the one of the mobile app). ecojoko publishes no official API: this is the interface its own web app uses, it may change without notice. Nothing is ever written to your account.",
-        "fr": "Votre capteur ecojoko envoie ses mesures au cloud ecojoko ; cette intégration les relit avec votre compte ecojoko (celui de l'application mobile). ecojoko ne publie pas d'API officielle : c'est l'interface de sa propre application web qui est utilisée, elle peut changer sans préavis. Rien n'est jamais écrit sur votre compte."
+        "fr": "Votre capteur ecojoko envoie ses mesures au cloud ecojoko ; cette intégration les relit avec votre compte ecojoko (celui de l'application mobile). ecojoko ne publie pas d'API officielle : c'est l'interface de sa propre application web qui est utilisée, elle peut changer sans préavis. Rien n'est jamais écrit sur votre compte.",
+        "de": "Dein ecojoko-Sensor sendet seine Messwerte an die ecojoko-Cloud; diese Integration liest sie mit deinem ecojoko-Konto (dem der mobilen App) wieder aus. ecojoko veröffentlicht keine offizielle API: Verwendet wird die Schnittstelle der eigenen Web-App von ecojoko, sie kann sich ohne Vorankündigung ändern. In deinem Konto wird nie etwas geändert.",
+        "es": "Su sensor ecojoko envía sus mediciones a la nube de ecojoko; esta integración las lee con su cuenta de ecojoko (la de la aplicación móvil). ecojoko no publica ninguna API oficial: se utiliza la interfaz de su propia aplicación web, que puede cambiar sin previo aviso. Nunca se escribe nada en su cuenta."
       },
       "links": [
         {
           "url": "https://service.ecojoko.com/",
           "label": {
             "en": "My ecojoko account",
-            "fr": "Mon compte ecojoko"
+            "fr": "Mon compte ecojoko",
+            "de": "Mein ecojoko-Konto",
+            "es": "Mi cuenta de ecojoko"
           }
         }
       ]
@@ -39,12 +47,16 @@
       "type": "string",
       "label": {
         "en": "ecojoko email",
-        "fr": "E-mail ecojoko"
+        "fr": "E-mail ecojoko",
+        "de": "ecojoko-E-Mail",
+        "es": "Correo electrónico de ecojoko"
       },
       "required": true,
       "placeholder": {
         "en": "you@example.com",
-        "fr": "vous@exemple.fr"
+        "fr": "vous@exemple.fr",
+        "de": "du@beispiel.de",
+        "es": "usted@ejemplo.es"
       }
     },
     {
@@ -52,7 +64,9 @@
       "type": "secret",
       "label": {
         "en": "ecojoko password",
-        "fr": "Mot de passe ecojoko"
+        "fr": "Mot de passe ecojoko",
+        "de": "ecojoko-Passwort",
+        "es": "Contraseña de ecojoko"
       },
       "required": true
     },
@@ -61,11 +75,15 @@
       "type": "number",
       "label": {
         "en": "Live power refresh (s)",
-        "fr": "Rafraîchissement de la puissance (s)"
+        "fr": "Rafraîchissement de la puissance (s)",
+        "de": "Aktualisierung der Leistung (s)",
+        "es": "Actualización de la potencia (s)"
       },
       "description": {
         "en": "Seconds between two readings of the instantaneous power. Keep it reasonable: every reading is a request to the ecojoko cloud.",
-        "fr": "Secondes entre deux lectures de la puissance instantanée. Restez raisonnable : chaque lecture est une requête vers le cloud ecojoko."
+        "fr": "Secondes entre deux lectures de la puissance instantanée. Restez raisonnable : chaque lecture est une requête vers le cloud ecojoko.",
+        "de": "Sekunden zwischen zwei Abfragen der aktuellen Leistung. Bleib vernünftig: Jede Abfrage ist eine Anfrage an die ecojoko-Cloud.",
+        "es": "Segundos entre dos lecturas de la potencia instantánea. Mantenga un valor razonable: cada lectura es una petición a la nube de ecojoko."
       },
       "required": false,
       "default": 30,
@@ -77,11 +95,15 @@
       "type": "number",
       "label": {
         "en": "Daily statistics refresh (s)",
-        "fr": "Rafraîchissement des statistiques du jour (s)"
+        "fr": "Rafraîchissement des statistiques du jour (s)",
+        "de": "Aktualisierung der Tagesstatistik (s)",
+        "es": "Actualización de las estadísticas del día (s)"
       },
       "description": {
         "en": "Seconds between two refreshes of today's consumption, the cumulative index and the ambient sensors.",
-        "fr": "Secondes entre deux mises à jour de la consommation du jour, de l'index cumulé et des capteurs d'ambiance."
+        "fr": "Secondes entre deux mises à jour de la consommation du jour, de l'index cumulé et des capteurs d'ambiance.",
+        "de": "Sekunden zwischen zwei Aktualisierungen des Tagesverbrauchs, des kumulierten Zählerstands und der Raumklimasensoren.",
+        "es": "Segundos entre dos actualizaciones del consumo del día, del índice acumulado y de los sensores ambientales."
       },
       "required": false,
       "default": 300,
@@ -93,11 +115,15 @@
       "type": "boolean",
       "label": {
         "en": "One sensor per tariff period",
-        "fr": "Un capteur par période tarifaire"
+        "fr": "Un capteur par période tarifaire",
+        "de": "Ein Sensor pro Tarifzeit",
+        "es": "Un sensor por periodo tarifario"
       },
       "description": {
         "en": "Adds today's kWh per period reported by ecojoko (off-peak/peak hours, Tempo colours) when your tariff declares them.",
-        "fr": "Ajoute les kWh du jour par période remontée par ecojoko (heures creuses/pleines, couleurs Tempo) quand votre tarif en déclare."
+        "fr": "Ajoute les kWh du jour par période remontée par ecojoko (heures creuses/pleines, couleurs Tempo) quand votre tarif en déclare.",
+        "de": "Fügt die heutigen kWh pro Zeitraum hinzu, die ecojoko meldet (Haupt-/Nebenzeiten, Tempo-Farben), wenn dein Tarif welche angibt.",
+        "es": "Añade los kWh del día por periodo que informa ecojoko (horas valle/punta, colores Tempo) cuando su tarifa los declara."
       },
       "required": false,
       "default": true
@@ -107,11 +133,15 @@
       "type": "boolean",
       "label": {
         "en": "Ambient temperature and humidity",
-        "fr": "Température et humidité ambiantes"
+        "fr": "Température et humidité ambiantes",
+        "de": "Raumtemperatur und Luftfeuchtigkeit",
+        "es": "Temperatura y humedad ambiente"
       },
       "description": {
         "en": "Publishes the indoor/outdoor temperature and humidity of the ecojoko display as a second device.",
-        "fr": "Publie la température et l'humidité intérieures/extérieures de l'afficheur ecojoko comme second appareil."
+        "fr": "Publie la température et l'humidité intérieures/extérieures de l'afficheur ecojoko comme second appareil.",
+        "de": "Veröffentlicht die Innen-/Außentemperatur und -luftfeuchtigkeit des ecojoko-Displays als zweites Gerät.",
+        "es": "Publica la temperatura y la humedad interiores/exteriores de la pantalla ecojoko como segundo dispositivo."
       },
       "required": false,
       "default": true
@@ -122,7 +152,9 @@
       "key": "test_connection",
       "label": {
         "en": "Test the connection",
-        "fr": "Tester la connexion"
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
       },
       "timeout_seconds": 60
     }
@@ -132,11 +164,15 @@
       "key": "energy",
       "label": {
         "en": "Energy",
-        "fr": "Énergie"
+        "fr": "Énergie",
+        "de": "Energie",
+        "es": "Energía"
       },
       "description": {
         "en": "Live power, today's consumption and surplus, the power curve, tariff periods.",
-        "fr": "Puissance en direct, consommation et surplus du jour, courbe de puissance, périodes."
+        "fr": "Puissance en direct, consommation et surplus du jour, courbe de puissance, périodes.",
+        "de": "Aktuelle Leistung, Verbrauch und Überschuss von heute, Leistungskurve, Tarifzeiten.",
+        "es": "Potencia en directo, consumo y excedente del día, curva de potencia, periodos tarifarios."
       },
       "icon": "zap",
       "settings": [
@@ -145,11 +181,15 @@
           "type": "select",
           "label": {
             "en": "Power chart window",
-            "fr": "Fenêtre de la courbe"
+            "fr": "Fenêtre de la courbe",
+            "de": "Zeitraum der Kurve",
+            "es": "Periodo de la curva"
           },
           "description": {
             "en": "History shown by the power chart.",
-            "fr": "Historique affiché par la courbe de puissance."
+            "fr": "Historique affiché par la courbe de puissance.",
+            "de": "Verlauf, den die Leistungskurve anzeigt.",
+            "es": "Historial que muestra la curva de potencia."
           },
           "required": false,
           "default": "last-day",
@@ -158,21 +198,27 @@
               "value": "last-hour",
               "label": {
                 "en": "Last hour",
-                "fr": "Dernière heure"
+                "fr": "Dernière heure",
+                "de": "Letzte Stunde",
+                "es": "Última hora"
               }
             },
             {
               "value": "last-day",
               "label": {
                 "en": "Last 24 hours",
-                "fr": "Dernières 24 heures"
+                "fr": "Dernières 24 heures",
+                "de": "Letzte 24 Stunden",
+                "es": "Últimas 24 horas"
               }
             },
             {
               "value": "last-week",
               "label": {
                 "en": "Last 7 days",
-                "fr": "7 derniers jours"
+                "fr": "7 derniers jours",
+                "de": "Letzte 7 Tage",
+                "es": "Últimos 7 días"
               }
             }
           ]
@@ -183,11 +229,15 @@
       "key": "week",
       "label": {
         "en": "This week",
-        "fr": "Semaine"
+        "fr": "Semaine",
+        "de": "Woche",
+        "es": "Semana"
       },
       "description": {
         "en": "Consumption per day of the current week, total, average and hungriest day.",
-        "fr": "Consommation par jour de la semaine en cours, total, moyenne et jour le plus gourmand."
+        "fr": "Consommation par jour de la semaine en cours, total, moyenne et jour le plus gourmand.",
+        "de": "Verbrauch pro Tag der laufenden Woche, Summe, Durchschnitt und verbrauchsstärkster Tag.",
+        "es": "Consumo por día de la semana en curso, total, media y día de mayor consumo."
       },
       "icon": "bar-chart-2"
     },
@@ -195,11 +245,15 @@
       "key": "ambient",
       "label": {
         "en": "Indoor climate",
-        "fr": "Ambiance"
+        "fr": "Ambiance",
+        "de": "Raumklima",
+        "es": "Ambiente"
       },
       "description": {
         "en": "Indoor and outdoor temperature and humidity of the ecojoko display.",
-        "fr": "Température et humidité intérieures et extérieures de l'afficheur ecojoko."
+        "fr": "Température et humidité intérieures et extérieures de l'afficheur ecojoko.",
+        "de": "Innen- und Außentemperatur sowie Luftfeuchtigkeit des ecojoko-Displays.",
+        "es": "Temperatura y humedad interiores y exteriores de la pantalla ecojoko."
       },
       "icon": "thermometer"
     }

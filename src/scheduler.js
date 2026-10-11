@@ -26,14 +26,20 @@ export const MESSAGES = {
   badCredentials: {
     en: 'ecojoko rejected the email or password. Check the configuration.',
     fr: "ecojoko refuse l'identifiant ou le mot de passe. Vérifiez la configuration.",
+    de: 'ecojoko lehnt die E-Mail-Adresse oder das Passwort ab. Überprüfe die Konfiguration.',
+    es: 'ecojoko rechaza el correo electrónico o la contraseña. Compruebe la configuración.',
   },
   unreachable: {
     en: 'ecojoko cloud not answering, retrying at the next schedule.',
     fr: 'Le cloud ecojoko ne répond pas, nouvelle tentative au prochain cycle.',
+    de: 'Die ecojoko-Cloud antwortet nicht, neuer Versuch beim nächsten Zyklus.',
+    es: 'La nube de ecojoko no responde, nuevo intento en el próximo ciclo.',
   },
   missingCredentials: {
     en: 'Enter your ecojoko email and password to start.',
     fr: 'Renseignez votre e-mail et votre mot de passe ecojoko pour démarrer.',
+    de: 'Gib deine ecojoko-E-Mail-Adresse und dein Passwort ein, um zu starten.',
+    es: 'Introduzca su correo electrónico y su contraseña de ecojoko para empezar.',
   },
 };
 

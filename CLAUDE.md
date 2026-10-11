@@ -71,6 +71,11 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
 - Les builders de `src/widgets.js` sont purs ; `widgetFeatureIds(gladys, snapshot)` rederive les
   `external_id` exactement comme `src/devices/` (même `gladys.externalIds(type, platformId)`).
 
+- **Quatre langues** : `en`, `fr`, `de` (tutoiement, « du ») et `es` (vouvoiement, « usted »),
+  partout où le manifeste et le code ont un texte multilingue. `test/i18n.test.js` échoue sur une
+  langue manquante, un texte vide ou trop long, ou un « Sie »/« Ihr » de politesse. Les noms de
+  fonctionnalités et d'appareils restent en français : figés à la création, sans réglage de langue.
+
 ## Travailler sur ce dépôt
 
 - Mêmes étapes que la CI, dans le même ordre : `npm ci`, `npm run format:check`, `npm run lint`,
