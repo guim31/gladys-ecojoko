@@ -48,39 +48,117 @@ const MAX_STATUS_VALUE = 40;
 // A reading older than this many statistics cycles is flagged (warning).
 const STALE_AFTER_CYCLES = 3;
 
-const TEXTS = {
-  power: { en: 'Grid power', fr: 'Puissance' },
-  today: { en: 'Consumption today', fr: 'Consommation du jour' },
-  productionToday: { en: 'Exported today', fr: 'Surplus injecté du jour' },
-  powerChart: { en: 'Grid power', fr: 'Puissance réseau' },
-  lastReading: { en: 'Last reading', fr: 'Dernier relevé' },
-  consumption: { en: 'Consumption', fr: 'Consommation' },
-  exported: { en: 'Exported', fr: 'Injecté' },
-  weekTotal: { en: 'Week total', fr: 'Total de la semaine' },
-  dailyAverage: { en: 'Daily average', fr: 'Moyenne par jour' },
-  hungriestDay: { en: 'Hungriest day', fr: 'Jour le plus gourmand' },
-  previousWeek: { en: 'Last week', fr: 'Semaine dernière' },
-  weekExported: { en: 'Exported this week', fr: 'Injecté cette semaine' },
-  temperatureIndoor: { en: 'Indoor temperature', fr: 'Température intérieure' },
-  temperatureOutdoor: { en: 'Outdoor temperature', fr: 'Température extérieure' },
-  humidityIndoor: { en: 'Indoor humidity', fr: 'Humidité intérieure' },
-  humidityOutdoor: { en: 'Outdoor humidity', fr: 'Humidité extérieure' },
-  temperatureChart: { en: 'Temperature', fr: 'Température' },
+export const TEXTS = {
+  power: { en: 'Grid power', fr: 'Puissance', de: 'Netzleistung', es: 'Potencia de red' },
+  today: {
+    en: 'Consumption today',
+    fr: 'Consommation du jour',
+    de: 'Verbrauch heute',
+    es: 'Consumo de hoy',
+  },
+  productionToday: {
+    en: 'Exported today',
+    fr: 'Surplus injecté du jour',
+    de: 'Heute eingespeist',
+    es: 'Excedente inyectado hoy',
+  },
+  powerChart: {
+    en: 'Grid power',
+    fr: 'Puissance réseau',
+    de: 'Netzleistung',
+    es: 'Potencia de red',
+  },
+  lastReading: {
+    en: 'Last reading',
+    fr: 'Dernier relevé',
+    de: 'Letzte Messung',
+    es: 'Última lectura',
+  },
+  consumption: { en: 'Consumption', fr: 'Consommation', de: 'Verbrauch', es: 'Consumo' },
+  exported: { en: 'Exported', fr: 'Injecté', de: 'Eingespeist', es: 'Inyectado' },
+  weekTotal: {
+    en: 'Week total',
+    fr: 'Total de la semaine',
+    de: 'Summe der Woche',
+    es: 'Total de la semana',
+  },
+  dailyAverage: {
+    en: 'Daily average',
+    fr: 'Moyenne par jour',
+    de: 'Tagesdurchschnitt',
+    es: 'Media diaria',
+  },
+  hungriestDay: {
+    en: 'Hungriest day',
+    fr: 'Jour le plus gourmand',
+    de: 'Verbrauchsstärkster Tag',
+    es: 'Día de mayor consumo',
+  },
+  previousWeek: {
+    en: 'Last week',
+    fr: 'Semaine dernière',
+    de: 'Letzte Woche',
+    es: 'Semana pasada',
+  },
+  weekExported: {
+    en: 'Exported this week',
+    fr: 'Injecté cette semaine',
+    de: 'Diese Woche eingespeist',
+    es: 'Inyectado esta semana',
+  },
+  temperatureIndoor: {
+    en: 'Indoor temperature',
+    fr: 'Température intérieure',
+    de: 'Innentemperatur',
+    es: 'Temperatura interior',
+  },
+  temperatureOutdoor: {
+    en: 'Outdoor temperature',
+    fr: 'Température extérieure',
+    de: 'Außentemperatur',
+    es: 'Temperatura exterior',
+  },
+  humidityIndoor: {
+    en: 'Indoor humidity',
+    fr: 'Humidité intérieure',
+    de: 'Luftfeuchtigkeit innen',
+    es: 'Humedad interior',
+  },
+  humidityOutdoor: {
+    en: 'Outdoor humidity',
+    fr: 'Humidité extérieure',
+    de: 'Luftfeuchtigkeit außen',
+    es: 'Humedad exterior',
+  },
+  temperatureChart: {
+    en: 'Temperature',
+    fr: 'Température',
+    de: 'Temperatur',
+    es: 'Temperatura',
+  },
   notConnected: {
     en: 'ecojoko is not connected yet: enter your credentials in the configuration and wait for the first reading.',
     fr: "ecojoko n'est pas encore connecté : renseignez vos identifiants dans la configuration et attendez le premier relevé.",
+    de: 'ecojoko ist noch nicht verbunden: Gib deine Zugangsdaten in der Konfiguration ein und warte auf die erste Messung.',
+    es: 'ecojoko aún no está conectado: introduzca sus credenciales en la configuración y espere la primera lectura.',
   },
   noStatsYet: {
     en: 'No statistics read yet: the first weekly reading comes within a few minutes.',
     fr: 'Aucune statistique lue pour le moment : le premier relevé hebdomadaire arrive dans quelques minutes.',
+    de: 'Noch keine Statistik gelesen: Die erste Wochenmessung folgt in wenigen Minuten.',
+    es: 'Todavía no se ha leído ninguna estadística: la primera lectura semanal llegará en unos minutos.',
   },
   noWeekYet: {
     en: 'No consumption recorded this week yet.',
     fr: 'Aucune consommation relevée cette semaine pour le moment.',
+    de: 'Diese Woche wurde noch kein Verbrauch erfasst.',
+    es: 'Todavía no se ha registrado ningún consumo esta semana.',
   },
   noAmbient: {
     en: 'No ambient sensor: enable the Environment option in the configuration if your ecojoko has one.',
     fr: "Aucun capteur d'ambiance : activez l'option Environnement dans la configuration si votre ecojoko en a un.",
+    de: 'Kein Raumklimasensor: Aktiviere die Option „Raumtemperatur und Luftfeuchtigkeit“ in der Konfiguration, falls dein ecojoko einen hat.',
+    es: 'Ningún sensor ambiental: active la opción «Temperatura y humedad ambiente» en la configuración si su ecojoko tiene uno.',
   },
 };
 
@@ -107,8 +185,10 @@ export function widgetFeatureIds(gladys, snapshot) {
   return ids;
 }
 
+const LOCALES = { en: 'en-GB', fr: 'fr-FR', de: 'de-DE', es: 'es-ES' };
+
 function locale(language) {
-  return language === 'fr' ? 'fr-FR' : 'en-GB';
+  return LOCALES[language] ?? LOCALES.en;
 }
 
 /** "11,3 kWh" / "11.3 kWh": at most one decimal, the way the ecojoko app does. */

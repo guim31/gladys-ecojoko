@@ -9,6 +9,10 @@
 import { hasCredentials } from './config.js';
 import { MESSAGES } from './scheduler.js';
 
+/** Yes / no in the result of test_connection. */
+export const YES = { en: 'yes', fr: 'oui', de: 'ja', es: 'sí' };
+export const NO = { en: 'no', fr: 'non', de: 'nein', es: 'no' };
+
 export const ACTIONS = {
   /**
    * Log in with the configured credentials, describe what the account
@@ -25,19 +29,27 @@ export const ACTIONS = {
     const watts = await engine.readRealtime();
     const { gateway, capabilities } = snapshot;
     const periods = capabilities.periods.length ? capabilities.periods.join(', ') : '-';
-    const ambientEn = capabilities.hasTempHum ? 'yes' : 'no';
-    const ambientFr = capabilities.hasTempHum ? 'oui' : 'non';
-    const prodEn = capabilities.hasProduction ? 'yes' : 'no';
-    const prodFr = capabilities.hasProduction ? 'oui' : 'non';
+    const live = Math.round(watts);
+    const firmware = gateway.firmware ?? '?';
+    const flag = (value) => (value ? YES : NO);
+    const prod = flag(capabilities.hasProduction);
+    const amb = flag(capabilities.hasTempHum);
     return {
       en:
-        `Connected. Gateway ${gateway.gatewayId} (firmware ${gateway.firmware ?? '?'}), ` +
-        `live power ${Math.round(watts)} W.\n` +
-        `Tariff periods: ${periods} · solar surplus: ${prodEn} · ambient sensor: ${ambientEn}`,
+        `Connected. Gateway ${gateway.gatewayId} (firmware ${firmware}), live power ${live} W.\n` +
+        `Tariff periods: ${periods} · solar surplus: ${prod.en} · ambient sensor: ${amb.en}`,
       fr:
-        `Connexion réussie. Passerelle ${gateway.gatewayId} (firmware ${gateway.firmware ?? '?'}), ` +
-        `puissance instantanée ${Math.round(watts)} W.\n` +
-        `Périodes tarifaires : ${periods} · surplus solaire : ${prodFr} · capteur d'ambiance : ${ambientFr}`,
+        `Connexion réussie. Passerelle ${gateway.gatewayId} (firmware ${firmware}), ` +
+        `puissance instantanée ${live} W.\n` +
+        `Périodes tarifaires : ${periods} · surplus solaire : ${prod.fr} · capteur d'ambiance : ${amb.fr}`,
+      de:
+        `Verbunden. Gateway ${gateway.gatewayId} (Firmware ${firmware}), ` +
+        `aktuelle Leistung ${live} W.\n` +
+        `Tarifzeiten: ${periods} · Solarüberschuss: ${prod.de} · Raumklimasensor: ${amb.de}`,
+      es:
+        `Conexión correcta. Pasarela ${gateway.gatewayId} (firmware ${firmware}), ` +
+        `potencia instantánea ${live} W.\n` +
+        `Periodos tarifarios: ${periods} · excedente solar: ${prod.es} · sensor ambiental: ${amb.es}`,
     };
   },
 };
