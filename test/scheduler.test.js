@@ -81,7 +81,7 @@ test('readStats publishes today (Tuesday = entry 1) and the synthesized index', 
 });
 
 test('the scheduler discovers, publishes devices and first states, then ticks', async (t) => {
-  t.mock.timers.enable({ apis: ['setInterval'] });
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: NOW });
   const config = normalizeConfig({ ...GOOD, poll_frequency: 10, stats_frequency: 60 });
   const { engine, fake } = makeEngine(config, { realtime: 850 });
   const gladys = createFakeGladys();
@@ -108,12 +108,21 @@ test('the scheduler discovers, publishes devices and first states, then ticks', 
   }
   assert.equal(realtimeCalls(), before + 1, 'one live reading per poll_frequency');
 
-  // onPoll fallback: a poll on the meter is an immediate live reading, a poll
-  // on the ambient device a statistics refresh, an unknown device is ignored.
-  await poll({ external_id: 'ecojoko-meter:4242-11' });
-  assert.equal(realtimeCalls(), before + 2, 'poll(meter) reads the live power');
+  // onPoll fallback. Within the interval of the last scheduled reading, a
+  // poll costs no request (the timers already published those states).
   const statsCalls = () => fake.state.calls.filter((c) => c.path.includes('/powerstat/')).length;
   const statsBefore = statsCalls();
+  await poll({ external_id: 'ecojoko-meter:4242-11' });
+  await poll({ external_id: 'ecojoko-ambient:4242-12' });
+  assert.equal(realtimeCalls(), before + 1, 'no second live reading within the interval');
+  assert.equal(statsCalls(), statsBefore, 'no second statistics reading within the interval');
+
+  // Past the interval (clock only, timers not fired), a poll on the meter is
+  // an immediate live reading, a poll on the ambient device a statistics
+  // refresh, an unknown device is ignored.
+  t.mock.timers.setTime(Date.now() + 61 * 1000);
+  await poll({ external_id: 'ecojoko-meter:4242-11' });
+  assert.equal(realtimeCalls(), before + 2, 'poll(meter) reads the live power');
   await poll({ external_id: 'ecojoko-ambient:4242-12' });
   assert.equal(statsCalls(), statsBefore + 1, 'poll(ambient) refreshes the statistics');
   await poll({ external_id: 'ecojoko-meter:unknown' });

@@ -103,6 +103,24 @@ test('the index never decreases when ecojoko revises a value downward', async ()
   assert.equal(r.todayKwh, 4.2, 'today so far is reported as-is');
 });
 
+test('a lasting downward revision is warned once, not on every refresh', async (t) => {
+  const lines = [];
+  t.mock.method(console, 'error', (...args) => lines.push(args.join(' ')));
+  t.mock.method(console, 'log', (...args) => lines.push(args.join(' ')));
+  const store = createIndexStore({ dataDir, meterKey: 'gw-pm' });
+  await store.update({ today: '2026-09-08', dailyKwh: { '2026-09-08': 5 } });
+  lines.length = 0;
+  for (let i = 0; i < 4; i += 1) {
+    await store.update({ today: '2026-09-08', dailyKwh: { '2026-09-08': 4.2 } });
+  }
+  // Caught up, then revised down again: a new episode, a new warning.
+  await store.update({ today: '2026-09-08', dailyKwh: { '2026-09-08': 6 } });
+  await store.update({ today: '2026-09-08', dailyKwh: { '2026-09-08': 5.5 } });
+  const warnings = lines.filter((l) => l.includes('[WARN]'));
+  assert.equal(warnings.length, 2, warnings.join('\n'));
+  assert.ok(lines.every((l) => !l.includes('[INFO]')));
+});
+
 test('an unreadable or foreign state file is ignored, not fatal', async () => {
   const { writeFile } = await import('node:fs/promises');
   const store = createIndexStore({ dataDir, meterKey: 'gw-pm' });

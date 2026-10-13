@@ -45,6 +45,8 @@ export function createEngine({
   // (every readStats) and, when the index backfill fetched it, the previous
   // one. Nothing else is ever kept.
   const weeksByMonday = new Map();
+  // Ambient readings failing: warn once, then debug until they work again.
+  let ambientFailing = false;
 
   const today = () => parisDate(now());
 
@@ -192,9 +194,18 @@ export function createEngine({
           client.getHumidity(gateway, date),
         ]);
         ambient = { temperature, humidity };
+        if (ambientFailing) {
+          ambientFailing = false;
+          logger.info('Ambient reading back to normal');
+        }
       } catch (err) {
         // Ambient values are a bonus: never let them break the energy refresh.
-        logger.warn(`Ambient reading failed: ${err.message}`);
+        if (ambientFailing) {
+          logger.debug(`Ambient reading failed again: ${err.message}`);
+        } else {
+          ambientFailing = true;
+          logger.warn(`Ambient reading failed: ${err.message} (further failures logged in debug)`);
+        }
       }
     }
 

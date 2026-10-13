@@ -2,18 +2,18 @@
 
 Puissance en direct, consommation du jour et capteurs d'ambiance de votre assistant ecojoko.
 
-Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.14.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
+Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.15.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
 
 Ce fichier rassemble ce qu'une session de code doit savoir et qui ne se lit pas dans le code : choix de conception, faits vérifiés en réel, pièges déjà payés. Le compléter quand un nouveau piège est découvert.
 
-## État au 05/10/2026
+## État au 13/10/2026
 
-Version 1.0.3 publiée (index de production cumulé compris), indexée dans le store.
+Version 1.2.0 publiée : trois widgets de tableau de bord (`energy`, `week`, `ambient`), quatre
+langues, `gladys_version` `>=5.1.0`. Les widgets n'ont pas encore été vus sur une instance réelle :
+à faire tester par Pat.
 
-Branche `feat/dashboard-widgets` (PR brouillon vers `main`) : trois widgets de tableau de bord
-(`energy`, `week`, `ambient`), SDK monté à `^0.14.0`, `gladys_version` à `>=5.1.0`. Rien de tout
-cela n'a été vu sur une instance Gladys ni avec un compte ecojoko : seuls la suite de tests, le
-validateur de contenu du SDK et le validateur du store ont tourné. À faire tester par Pat.
+Branche `chore/sdk-0.15` : SDK `^0.15.0`, logs ramenés au cycle de vie, `onPoll` de repli sans
+double lecture (voir « Logs » et le piège du polling plus bas).
 
 Guilhem n'a pas d'ecojoko : les retours réels viennent de **Pat**, producteur solaire, sur le fil
 https://community.gladysassistant.com/t/10833. Validée en réel le 09/09/2026, chiffres,
@@ -44,7 +44,17 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
   jamais `energy-sensor`/`power`, qui est une consommation. Bornes symétriques −12000/+12000 W :
   un `min: 0` mettait tout surplus solaire hors de la jauge.
 - Deux cadences internes, puissance toutes les 30 s et statistiques toutes les 5 min, avec
-  `should_poll: false`.
+  `should_poll: false` (`src/scheduler.js`) : l'intégration ne dépend pas du polling du cœur
+  (Gladys #3198). L'`onPoll` de repli ne relit pas ecojoko si la lecture correspondante a réussi
+  depuis moins d'un intervalle. `test/polling-and-logs.test.js` le prouve contre le faux Gladys du
+  SDK : les états arrivent sans aucun appel `onPoll`.
+- **Logs** : le niveau info ne garde que le cycle de vie (démarrage, première connexion à
+  ecojoko, passerelle découverte, index chargé ou initialisé, retour à la normale, actions de
+  l'utilisateur). Chaque relevé, chaque re-login après expiration de session (toutes les quelques
+  heures) et chaque échec répété passent en debug (`LOG_LEVEL=debug`) ; un échec n'est signalé
+  en `warn` qu'au premier de la série (puissance, statistiques, capteurs d'ambiance, index qui
+  voudrait reculer), puis une ligne info au rétablissement. Un test vérifie qu'un cycle normal,
+  re-login compris, n'écrit rien au-dessus de debug.
 - Mauvais identifiants : arrêt des timers, pour ne pas faire bloquer le compte.
 - Périodes tarifaires découvertes dans `subconsumption` : une fonctionnalité `index-today` par
   libellé.
@@ -84,6 +94,12 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
 - La CI tourne en Node 24. Une session cloud a Node 22 par défaut, ce qui suffit (`engines` :
   `>=20`). Le validateur du store exige Node 24 (`EBADENGINE`) mais tourne quand même en 22.
 - Le passage du SDK 0.13 à 0.14 n'a rien cassé : les 50 tests existants passent sans retouche.
+  Le passage à 0.15 non plus (seul le test qui figeait `^0.14` a changé). Les tests unitaires
+  gardent le faux Gladys maison (`test/helpers/fakeGladys.js`) ; le test du polling et des logs
+  utilise celui du SDK (`@gladysassistant/integration-sdk/testing`), qui valide les appareils et
+  les états comme le cœur.
+- Pas de `publishChangedStates` : la puissance change à chaque relevé, et l'index cumulé doit
+  rester daté à chaque cycle de statistiques pour le calcul de consommation du cœur.
 - Une session de code n'a **ni instance Gladys ni appareil réel**. La suite de tests, le lint et
   le validateur du store sont les seules vérifications possibles : le test réel passe par
   Guilhem ou par les testeurs du forum. Le dire, plutôt que de conclure que « ça marche ».
@@ -107,7 +123,9 @@ Vérifiés dans le code du cœur ou payés sur une intégration publiée. Ils va
   `poll_frequency` vaut une valeur de la liste fixe (1000, 2000, 10000, 15000, 30000, 60000 ms).
   Publier seulement `poll_frequency` donne un appareil accepté mais jamais interrogé. Pour une
   cadence hors liste, publier `should_poll: false` et pousser les états depuis le conteneur, en
-  gardant un `onPoll` de repli.
+  gardant un `onPoll` de repli. En 5.2.0 (issue Gladys #3198, correctif #3199 pas encore publié),
+  les appareils déjà créés sans `should_poll` ne sont jamais interrogés, même après correction :
+  toute intégration qui compte sur `onPoll` doit avoir son propre minuteur.
 - **`min` et `max` sont NOT NULL** dans `t_device_feature`, y compris pour `text/text` : sans eux,
   « Ajouter à Gladys » échoue en HTTP 422. Mettre 0/0, comme Zigbee2MQTT.
 - `level-sensor/decimal` n'existe pas côté serveur. `light-sensor/binary` n'a pas de libellé dans

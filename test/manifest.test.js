@@ -37,7 +37,7 @@ test('dashboard widgets (and catalog categories) require Gladys >= 5.1.0', () =>
   assert.ok(minVersion);
   const [, major, minor] = minVersion.map(Number);
   assert.ok(major > 5 || (major === 5 && minor >= 1));
-  assert.ok(pkg.dependencies['@gladysassistant/integration-sdk'].startsWith('^0.14'));
+  assert.match(pkg.dependencies['@gladysassistant/integration-sdk'], /^\^0\.(1[4-9]|[2-9]\d)\./);
 });
 
 test('every declared widget has a builder and a registered handler, and vice versa', () => {

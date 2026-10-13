@@ -99,6 +99,9 @@ function describeError(body, status) {
  */
 export function createClient({ email, password }, { fetchImpl = globalThis.fetch } = {}) {
   let session = null;
+  // The first login of this client is lifecycle (info); the re-logins after
+  // an expired session are routine and go to debug.
+  let loggedInOnce = false;
 
   async function request(path, { method = 'GET', body, auth = true } = {}) {
     const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
@@ -143,7 +146,12 @@ export function createClient({ email, password }, { fetchImpl = globalThis.fetch
       throw new EcojokoApiError('ecojoko login succeeded but returned no session cookie', 200);
     }
     session = cookie;
-    logger.info('Logged in to ecojoko');
+    if (loggedInOnce) {
+      logger.debug('Logged in to ecojoko again');
+    } else {
+      loggedInOnce = true;
+      logger.info('Logged in to ecojoko');
+    }
     return session;
   }
 
@@ -158,7 +166,7 @@ export function createClient({ email, password }, { fetchImpl = globalThis.fetch
     const { response, json } = await request(path);
     if (response.status === 401 || response.status === 403) {
       if (!retried) {
-        logger.info(`Session rejected on ${path}, logging in again`);
+        logger.debug(`Session rejected on ${path}, logging in again`);
         session = null;
         return get(path, { retried: true });
       }
