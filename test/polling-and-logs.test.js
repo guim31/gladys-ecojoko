@@ -64,8 +64,6 @@ function captureLogs(t) {
 test('states reach Gladys from the internal timers, without any onPoll from the core', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval'] });
   const { gladys, engine, config } = setup();
-  const pollsSeen = [];
-  gladys.onPoll(async (device) => pollsSeen.push(device));
 
   const { stop } = await startScheduler({ gladys, config, engine });
   t.after(stop);
@@ -95,7 +93,7 @@ test('states reach Gladys from the internal timers, without any onPoll from the 
   assert.equal(powerStates().length, 13);
   assert.equal(indexStates().length, 3);
   assert.equal(gladys.fake.lastState(powerId), 850);
-  assert.deepEqual(pollsSeen, [], 'the core never had to poll');
+  // No `gladys.fake.poll()` anywhere in this test: the core never polled.
 });
 
 test('a normal cycle writes nothing at info level', async (t) => {

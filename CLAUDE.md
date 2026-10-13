@@ -52,8 +52,9 @@ Aucune documentation officielle ; référence : l'intégration Home Assistant
   ecojoko, passerelle découverte, index chargé ou initialisé, retour à la normale, actions de
   l'utilisateur). Chaque relevé, chaque re-login après expiration de session (toutes les quelques
   heures) et chaque échec répété passent en debug (`LOG_LEVEL=debug`) ; un échec n'est signalé
-  en `warn` qu'au premier de la série (puissance, statistiques, capteurs d'ambiance, index qui
-  voudrait reculer), puis une ligne info au rétablissement. Un test vérifie qu'un cycle normal,
+  en `warn` qu'au premier de la série (démarrage, puissance, statistiques, capteurs d'ambiance),
+  puis une ligne info au rétablissement ; un index qui voudrait reculer est signalé une fois par
+  épisode, sa fin en debug. Un test vérifie qu'un cycle normal,
   re-login compris, n'écrit rien au-dessus de debug.
 - Mauvais identifiants : arrêt des timers, pour ne pas faire bloquer le compte.
 - Périodes tarifaires découvertes dans `subconsumption` : une fonctionnalité `index-today` par

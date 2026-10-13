@@ -35,6 +35,9 @@ let scheduler = null; // { stop, poll } returned by startScheduler
 // Serializes start/stop so a config update racing the connection handler
 // never leaves two schedulers running.
 let lifecycle = Promise.resolve();
+// True while the start keeps failing (cloud down at boot): the retry every
+// minute logs once, then in debug, then once when it finally starts.
+let startFailing = false;
 
 function stopEverything() {
   if (scheduler) {
@@ -58,8 +61,17 @@ async function restart() {
   try {
     scheduler = await startScheduler({ gladys, config, engine });
     await gladys.setConnectionStatus(true);
+    if (startFailing) {
+      startFailing = false;
+      logger.info('Started after an earlier failure');
+    }
   } catch (err) {
-    logger.error('Start failed', err);
+    if (startFailing) {
+      logger.debug(`Start failed again: ${err.message}`);
+    } else {
+      startFailing = true;
+      logger.error('Start failed (further attempts logged in debug)', err);
+    }
     stopEverything();
     const message =
       err.name === 'EcojokoAuthError' ? MESSAGES.badCredentials : MESSAGES.unreachable;
@@ -133,6 +145,7 @@ for (const key of Object.values(WIDGET)) {
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> restarting with the new configuration');
   config = normalizeConfig(newConfig);
+  startFailing = false; // a new configuration deserves its own error line
   await queue(restart);
 });
 

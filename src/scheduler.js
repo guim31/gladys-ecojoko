@@ -66,8 +66,9 @@ export async function startScheduler({ gladys, config, engine }) {
   // Readings currently failing, by label: only the first failure of a streak
   // is a warning, the next ones are debug lines.
   const failing = new Set();
-  // When each reading last succeeded (Date.now()), so the onPoll fallback
-  // never reads ecojoko twice within one scheduled interval.
+  // When each reading was last attempted (Date.now()), so the onPoll fallback
+  // never reads ecojoko twice within one scheduled interval, outage included
+  // (the timers retry on their own).
   let realtimeAt = 0;
   let statsAt = 0;
 
@@ -129,8 +130,8 @@ export async function startScheduler({ gladys, config, engine }) {
     realtimeRunning = true;
     try {
       await guarded('live power', async () => {
-        const watts = await engine.readRealtime();
         realtimeAt = Date.now();
+        const watts = await engine.readRealtime();
         logger.debug(`live power: ${watts} W`);
         await gladys.publishStates(powerMeter.statesFromRealtime(gladys, snapshot, watts));
       });
@@ -146,8 +147,8 @@ export async function startScheduler({ gladys, config, engine }) {
     statsRunning = true;
     try {
       await guarded('daily statistics', async () => {
-        const stats = await engine.readStats();
         statsAt = Date.now();
+        const stats = await engine.readStats();
         const states = powerMeter.statesFromStats(gladys, snapshot, config, stats);
         if (stats.ambient && ambient.isAvailable(snapshot, config)) {
           states.push(...ambient.statesFromReading(gladys, snapshot, stats.ambient));
@@ -168,8 +169,8 @@ export async function startScheduler({ gladys, config, engine }) {
    * the device page, answer with the matching reading instead of "not
    * implemented": live power for the meter, statistics for the ambient device.
    * The timers keep running either way, so a poll that comes within the
-   * interval of the last successful reading is answered without a request:
-   * those states are already in Gladys.
+   * interval of the last attempted reading is answered without a request:
+   * those states are already in Gladys, or the timer will retry.
    */
   async function poll(device) {
     if (stopped) {
