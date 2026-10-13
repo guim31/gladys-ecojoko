@@ -76,6 +76,9 @@ export function weekToDailyKwh(weekEntries, anyDateOfThatWeek, parseKwh) {
 export function createIndexStore({ dataDir, meterKey, label = 'consumption' }) {
   const file = path.join(dataDir, `index-${meterKey}.json`);
   let state = null;
+  // True while ecojoko reports less than the last published index: warned
+  // once per episode (it repeats on every refresh until the value catches up).
+  let clamping = false;
 
   async function load() {
     if (state) {
@@ -161,10 +164,17 @@ export function createIndexStore({ dataDir, meterKey, label = 'consumption' }) {
     const todayKwh = known[today] === undefined ? null : known[today];
     let index = state.base_kwh + (todayKwh ?? 0);
     if (index < state.last_index_kwh) {
-      logger.warn(
-        `Index would decrease (${index} < ${state.last_index_kwh} kWh), keeping the last value`,
-      );
+      const message = `${label} index would decrease (${index} < ${state.last_index_kwh} kWh), keeping the last value`;
+      if (clamping) {
+        logger.debug(message);
+      } else {
+        clamping = true;
+        logger.warn(message);
+      }
       index = state.last_index_kwh;
+    } else if (clamping) {
+      clamping = false;
+      logger.debug(`${label} index increasing again`);
     }
     index = round3(index);
     if (index !== state.last_index_kwh) {

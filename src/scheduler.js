@@ -12,6 +12,10 @@
 //   - anything else -> log, keep the timers, and flag the integration as
 //     disconnected after 3 consecutive failures (back to connected on the
 //     next success), so a cloud outage is visible in Gladys.
+//
+// Logs: a normal cycle writes nothing at info level (debug only). A failing
+// reading is logged once as a warning when it starts failing, then in debug
+// on each further attempt, and once at info level when it works again.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
@@ -59,6 +63,14 @@ export async function startScheduler({ gladys, config, engine }) {
   let realtimeRunning = false;
   let statsRunning = false;
   const timers = [];
+  // Readings currently failing, by label: only the first failure of a streak
+  // is a warning, the next ones are debug lines.
+  const failing = new Set();
+  // When each reading was last attempted (Date.now()), so the onPoll fallback
+  // never reads ecojoko twice within one scheduled interval, outage included
+  // (the timers retry on their own).
+  let realtimeAt = 0;
+  let statsAt = 0;
 
   async function reportConnected(value, message) {
     if (connected === value) {
@@ -87,6 +99,9 @@ export async function startScheduler({ gladys, config, engine }) {
     try {
       await fn();
       consecutiveFailures = 0;
+      if (failing.delete(label)) {
+        logger.info(`${label}: back to normal`);
+      }
       await reportConnected(true);
     } catch (err) {
       if (err instanceof EcojokoAuthError) {
@@ -96,7 +111,12 @@ export async function startScheduler({ gladys, config, engine }) {
         return;
       }
       consecutiveFailures += 1;
-      logger.warn(`${label} failed (${consecutiveFailures}): ${err.message}`);
+      if (failing.has(label)) {
+        logger.debug(`${label} failed again (${consecutiveFailures}): ${err.message}`);
+      } else {
+        failing.add(label);
+        logger.warn(`${label} failed: ${err.message} (further failures logged in debug)`);
+      }
       if (consecutiveFailures >= FAILURES_BEFORE_DISCONNECTED) {
         await reportConnected(false, MESSAGES.unreachable);
       }
@@ -110,7 +130,9 @@ export async function startScheduler({ gladys, config, engine }) {
     realtimeRunning = true;
     try {
       await guarded('live power', async () => {
+        realtimeAt = Date.now();
         const watts = await engine.readRealtime();
+        logger.debug(`live power: ${watts} W`);
         await gladys.publishStates(powerMeter.statesFromRealtime(gladys, snapshot, watts));
       });
     } finally {
@@ -125,11 +147,13 @@ export async function startScheduler({ gladys, config, engine }) {
     statsRunning = true;
     try {
       await guarded('daily statistics', async () => {
+        statsAt = Date.now();
         const stats = await engine.readStats();
         const states = powerMeter.statesFromStats(gladys, snapshot, config, stats);
         if (stats.ambient && ambient.isAvailable(snapshot, config)) {
           states.push(...ambient.statesFromReading(gladys, snapshot, stats.ambient));
         }
+        logger.debug(`daily statistics: ${states.length} state(s) published`);
         if (states.length > 0) {
           await gladys.publishStates(states);
         }
@@ -144,6 +168,9 @@ export async function startScheduler({ gladys, config, engine }) {
    * published with `should_poll: false`), but if a user turns polling on from
    * the device page, answer with the matching reading instead of "not
    * implemented": live power for the meter, statistics for the ambient device.
+   * The timers keep running either way, so a poll that comes within the
+   * interval of the last attempted reading is answered without a request:
+   * those states are already in Gladys, or the timer will retry.
    */
   async function poll(device) {
     if (stopped) {
@@ -151,11 +178,19 @@ export async function startScheduler({ gladys, config, engine }) {
     }
     const externalId = device?.external_id;
     if (externalId === powerMeter.deviceExternalId(gladys, snapshot)) {
+      if (Date.now() - realtimeAt < config.poll_frequency * 1000) {
+        logger.debug('poll: live power read recently, nothing to do');
+        return;
+      }
       await realtimeTick();
     } else if (
       ambient.isAvailable(snapshot, config) &&
       externalId === ambient.deviceExternalId(gladys, snapshot)
     ) {
+      if (Date.now() - statsAt < config.stats_frequency * 1000) {
+        logger.debug('poll: statistics read recently, nothing to do');
+        return;
+      }
       await statsTick();
     } else {
       logger.warn(`Poll requested for an unknown device: ${externalId}`);
