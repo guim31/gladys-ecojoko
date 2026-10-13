@@ -8,8 +8,8 @@
     "de": "Aktuelle Leistung, Tagesverbrauch und Raumklimasensoren deines ecojoko-Energieassistenten.",
     "es": "Potencia en directo, consumo diario y sensores ambientales de su asistente energético ecojoko."
   },
-  "version": "1.2.0",
-  "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.2.0",
+  "version": "1.2.1",
+  "docker_image": "ghcr.io/guim31/gladys-ecojoko:1.2.1",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-ecojoko/main/cover.png",
   "categories": ["energy"],
